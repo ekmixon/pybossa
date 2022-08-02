@@ -39,7 +39,7 @@ class BulkTaskImport(object):
 
     def count_tasks(self):
         """Return amount of tasks to be imported."""
-        return len([task for task in self.tasks()])
+        return len(list(self.tasks()))
 
     def import_metadata(self):
         return None

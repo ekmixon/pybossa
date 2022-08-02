@@ -155,7 +155,7 @@ class TestPrivacyWebPublic(web_helper.Helper):
     def test_05_app_stats_index(self):
         '''Test PRIVACY project stats privacy is respected'''
         # As Anonymou user
-        url = '/project/%s/stats' % self.project_short_name
+        url = f'/project/{self.project_short_name}/stats'
         res = self.app.get(url, follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = 'Project Stats page should be shown to anonymous users'
@@ -179,7 +179,7 @@ class TestPrivacyWebPublic(web_helper.Helper):
     def test_06_user_public_profile(self):
         '''Test PRIVACY user public profile privacy is respected'''
         # As Anonymous user
-        url = '/account/%s' % self.name
+        url = f'/account/{self.name}'
         res = self.app.get(url, follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = 'Public User Profile page should be shown to anonymous users'
@@ -208,9 +208,9 @@ class TestPrivacyWebPublic(web_helper.Helper):
         TaskRunFactory.create_batch(30, project=project)
         TaskRunFactory.create(user=owner)
         update_stats(project.id)
-        url = '/account/%s' % owner.name
+        url = f'/account/{owner.name}'
         # Use a full url to avoid redirection on API access.
-        full_url = 'http://localhost%s/' % url
+        full_url = f'http://localhost{url}/'
         res = self.app.get(full_url, content_type='application/json')
         data = json.loads(res.data)
         print(list(data.keys()))
@@ -266,7 +266,7 @@ class TestPrivacyWebPublic(web_helper.Helper):
         # As Anonymous user
         url = '/account/profile'
         # Use a full url to avoid redirection on API access.
-        full_url = 'http://localhost%s/' % url
+        full_url = f'http://localhost{url}/'
         res = self.app.get(full_url, content_type='application/json')
         data = json.loads(res.data)
         err_msg = 'no information should be shown here'
@@ -341,14 +341,13 @@ class TestPrivacyWebPrivacy(web_helper.Helper):
         err_msg = 'Community page should not be shown to anonymous users'
         assert dom.find(id='enforce_privacy') is not None, err_msg
         # As Authenticated user but NOT ADMIN
-        res = self.app.get(url + '?api_key=%s' % user.api_key,
-                           follow_redirects=True)
+        res = self.app.get(url + f'?api_key={user.api_key}', follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = 'Community page should not be shown to authenticated users'
         assert dom.find(id='enforce_privacy') is not None, err_msg
         self.signout
         # As Authenticated user but ADMIN
-        res = self.app.get(url + '?api_key=%s' % admin.api_key, follow_redirects=True)
+        res = self.app.get(url + f'?api_key={admin.api_key}', follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = 'Community page should be shown to admin users'
         assert dom.find(id='enforce_privacy') is None, err_msg
@@ -366,13 +365,13 @@ class TestPrivacyWebPrivacy(web_helper.Helper):
         err_msg = 'Leaderboard page should not be shown to anonymous users'
         assert dom.find(id='enforce_privacy') is not None, err_msg
         # As Authenticated user but NOT ADMIN
-        res = self.app.get(url + '?api_key=%s' % user.api_key, follow_redirects=True)
+        res = self.app.get(url + f'?api_key={user.api_key}', follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = 'Leaderboard page should not be shown to authenticated users'
         assert dom.find(id='enforce_privacy') is not None, err_msg
         self.signout
         # As Authenticated user but ADMIN
-        res = self.app.get(url + '?api_key=%s' % admin.api_key, follow_redirects=True)
+        res = self.app.get(url + f'?api_key={admin.api_key}', follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = 'Leaderboard page should be shown to admin users'
         assert dom.find(id='enforce_privacy') is None, err_msg
@@ -391,13 +390,13 @@ class TestPrivacyWebPrivacy(web_helper.Helper):
         assert dom.find(id='enforce_privacy') is not None, err_msg
         # As Authenticated user but NOT ADMIN
         self.signin()
-        res = self.app.get(url + '?api_key=%s' % user.api_key, follow_redirects=True)
+        res = self.app.get(url + f'?api_key={user.api_key}', follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = 'Stats page should not be shown to authenticated users'
         assert dom.find(id='enforce_privacy') is not None, err_msg
         self.signout
         # As Authenticated user but ADMIN
-        res = self.app.get(url + '?api_key=%s' % admin.api_key, follow_redirects=True)
+        res = self.app.get(url + f'?api_key={admin.api_key}', follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = 'Stats page should be shown to admin users'
         assert dom.find(id='enforce_privacy') is None, err_msg
@@ -411,22 +410,20 @@ class TestPrivacyWebPrivacy(web_helper.Helper):
         admin, user, owner = UserFactory.create_batch(3)
         task = TaskFactory.create(n_answers=3)
         TaskRunFactory.create_batch(3, task=task)
-        url = '/project/%s/stats' % task.project.short_name
+        url = f'/project/{task.project.short_name}/stats'
         update_stats(task.project.id)
         res = self.app.get(url, follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = 'Project Stats page should not be shown to anonymous users'
         assert dom.find(id='enforce_privacy') is not None, res.data
         # As Authenticated user but NOT ADMIN
-        res = self.app.get(url + '?api_key=%s' % user.api_key,
-                           follow_redirects=True)
+        res = self.app.get(url + f'?api_key={user.api_key}', follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = 'Project Stats page should not be shown to authenticated users'
         assert dom.find(id='enforce_privacy') is not None, err_msg
         self.signout
         # As Authenticated user but ADMIN
-        res = self.app.get(url + '?api_key=%s' % admin.api_key,
-                           follow_redirects=True)
+        res = self.app.get(url + f'?api_key={admin.api_key}', follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = 'Project Stats page should be shown to admin users'
         assert dom.find(id='enforce_privacy') is None, err_msg
@@ -438,19 +435,19 @@ class TestPrivacyWebPrivacy(web_helper.Helper):
         '''Test PRIVACY user public profile privacy is respected'''
         admin, user, owner = UserFactory.create_batch(3)
         # As Anonymou user
-        url = '/account/%s' % owner.name
+        url = f'/account/{owner.name}'
         res = self.app.get(url, follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = 'Public User Profile page should not be shown to anonymous users'
         assert dom.find(id='enforce_privacy') is not None, err_msg
         # As Authenticated user but NOT ADMIN
-        res = self.app.get(url + '?api_key=%s' % user.api_key, follow_redirects=True)
+        res = self.app.get(url + f'?api_key={user.api_key}', follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = 'Public User Profile page should not be shown to authenticated users'
         assert dom.find(id='enforce_privacy') is not None, err_msg
         self.signout
         # As Authenticated user but ADMIN
-        res = self.app.get(url + '?api_key=%s' % admin.api_key, follow_redirects=True)
+        res = self.app.get(url + f'?api_key={admin.api_key}', follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = 'Public User Profile page should be shown to admin users'
         assert dom.find(id='enforce_privacy') is None, err_msg

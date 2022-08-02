@@ -53,61 +53,59 @@ class Exporter(object):
         if table == 'result':
             csv_export_key = current_app.config.get('RESULT_CSV_EXPORT_INFO_KEY')
         if info_only:
+            tmp = []
             if flat:
-                tmp = []
                 for row in data:
                     inf = copy.deepcopy(row.dictize()['info'])
                     if inf and type(inf) == dict and csv_export_key and inf.get(csv_export_key):
                         inf = inf[csv_export_key]
-                    new_key = '%s_id' % table
-                    if inf and type(inf) == dict:
-                        inf[new_key] = row.id
-                        tmp.append(flatten(inf,
-                                           root_keys_to_ignore=ignore_keys))
-                    elif inf and type(inf) == list:
-                        for datum in inf:
-                            if type(datum) == dict:
-                                datum[new_key] = row.id
-                                tmp.append(flatten(datum,
-                                                   root_keys_to_ignore=ignore_keys))
+                    new_key = f'{table}_id'
+                    if inf:
+                        if type(inf) == dict:
+                            inf[new_key] = row.id
+                            tmp.append(flatten(inf,
+                                               root_keys_to_ignore=ignore_keys))
+                        elif type(inf) == list:
+                            for datum in inf:
+                                if type(datum) == dict:
+                                    datum[new_key] = row.id
+                                    tmp.append(flatten(datum,
+                                                       root_keys_to_ignore=ignore_keys))
             else:
-                tmp = []
                 for row in data:
                     if row.dictize()['info']:
                         tmp.append(row.dictize()['info'])
                     else:
                         tmp.append({})
+        elif flat:
+            tmp = []
+            for row in data:
+                cleaned = row.dictize()
+                task_run_ids = None
+                fav_user_ids = None
+                if cleaned.get('fav_user_ids'):
+                    fav_user_ids = cleaned['fav_user_ids']
+                    cleaned.pop('fav_user_ids')
+                if cleaned.get('task_run_ids'):
+                    task_run_ids = cleaned['task_run_ids']
+                    cleaned.pop('task_run_ids')
+
+                cleaned = flatten(cleaned,
+                                  root_keys_to_ignore=ignore_keys)
+
+                if fav_user_ids:
+                    cleaned['fav_user_ids'] = fav_user_ids
+                if task_run_ids:
+                    cleaned['task_run_ids'] = task_run_ids
+
+                tmp.append(cleaned)
         else:
-            if flat:
-                tmp = []
-                for row in data:
-                    cleaned = row.dictize()
-                    fav_user_ids = None
-                    task_run_ids = None
-                    if cleaned.get('fav_user_ids'):
-                        fav_user_ids = cleaned['fav_user_ids']
-                        cleaned.pop('fav_user_ids')
-                    if cleaned.get('task_run_ids'):
-                        task_run_ids = cleaned['task_run_ids']
-                        cleaned.pop('task_run_ids')
-
-                    cleaned = flatten(cleaned,
-                                      root_keys_to_ignore=ignore_keys)
-
-                    if fav_user_ids:
-                        cleaned['fav_user_ids'] = fav_user_ids
-                    if task_run_ids:
-                        cleaned['task_run_ids'] = task_run_ids
-
-                    tmp.append(cleaned)
-            else:
-                tmp = [row.dictize() for row in data]
+            tmp = [row.dictize() for row in data]
         return tmp
 
     def _project_name_latin_encoded(self, project):
         """project short name for later HTML header usage"""
-        name = unidecode(project.short_name)
-        return name
+        return unidecode(project.short_name)
 
     def _zip_factory(self, filename):
         """create a ZipFile Object with compression and allow big ZIP files (allowZip64)"""
@@ -117,8 +115,9 @@ class Exporter(object):
             zip_compression= zipfile.ZIP_DEFLATED
         except Exception as ex:
             zip_compression= zipfile.ZIP_STORED
-        _zip = zipfile.ZipFile(file=filename, mode='w', compression=zip_compression, allowZip64=True)
-        return _zip
+        return zipfile.ZipFile(
+            file=filename, mode='w', compression=zip_compression, allowZip64=True
+        )
 
     def _make_zip(self, project, ty):
         """Generate a ZIP of a certain type and upload it"""
@@ -130,18 +129,16 @@ class Exporter(object):
     def _download_path(self, project):
         container = self._container(project)
         if isinstance(uploader, local.LocalUploader):
-            filepath = safe_join(uploader.upload_folder, container)
-        else:
-            print("The method Exporter _download_path should not be used for Rackspace etc.!")  # TODO: Log this stuff
-            filepath = container
-        return filepath
+            return safe_join(uploader.upload_folder, container)
+        print("The method Exporter _download_path should not be used for Rackspace etc.!")  # TODO: Log this stuff
+        return container
 
     def download_name(self, project, ty, _format):
         """Get the filename (without) path of the file which should be downloaded.
            This function does not check if this filename actually exists!"""
         # TODO: Check if ty is valid
         name = self._project_name_latin_encoded(project)
-        filename = '%s_%s_%s_%s.zip' % (str(project.id), name, ty, _format)  # Example: 123_feynman_tasks_json.zip
+        filename = f'{str(project.id)}_{name}_{ty}_{_format}.zip'
         filename = secure_filename(filename)
         return filename
 
@@ -156,22 +153,22 @@ class Exporter(object):
         or generate one on the fly and upload it if not existing."""
         filename = self.download_name(project, ty)
         if not self.zip_existing(project, ty):
-            print("Warning: Generating %s on the fly now!" % filename)
+            print(f"Warning: Generating {filename} on the fly now!")
             self._make_zip(project, ty)
-        if isinstance(uploader, local.LocalUploader):
-            filepath = self._download_path(project)
-            res = send_file(filename_or_fp=safe_join(filepath, filename),
-                            mimetype='application/octet-stream',
-                            as_attachment=True,
-                            attachment_filename=filename)
-            # fail safe mode for more encoded filenames.
-            # It seems Flask and Werkzeug do not support RFC 5987 http://greenbytes.de/tech/tc2231/#encoding-2231-char
-            # res.headers['Content-Disposition'] = 'attachment; filename*=%s' % filename
-            return res
-        else:
+        if not isinstance(uploader, local.LocalUploader):
             return redirect(url_for('rackspace', filename=filename,
                                     container=self._container(project),
                                     _external=True))
+        filepath = self._download_path(project)
+            # fail safe mode for more encoded filenames.
+            # It seems Flask and Werkzeug do not support RFC 5987 http://greenbytes.de/tech/tc2231/#encoding-2231-char
+            # res.headers['Content-Disposition'] = 'attachment; filename*=%s' % filename
+        return send_file(
+            filename_or_fp=safe_join(filepath, filename),
+            mimetype='application/octet-stream',
+            as_attachment=True,
+            attachment_filename=filename,
+        )
 
     def response_zip(self, project, ty):
         return self.get_zip(project, ty)

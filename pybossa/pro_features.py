@@ -23,24 +23,32 @@ class ProFeatureHandler(object):
         self.config = config
 
     def auditlog_enabled_for(self, user):
-        if not self.config.get('auditlog'):
-            return True
-        return user.is_authenticated and (user.admin or user.pro)
+        return (
+            user.is_authenticated and (user.admin or user.pro)
+            if self.config.get('auditlog')
+            else True
+        )
 
     def webhooks_enabled_for(self, user):
-        if not self.config.get('webhooks'):
-            return True
-        return user.is_authenticated and (user.admin or user.pro)
+        return (
+            user.is_authenticated and (user.admin or user.pro)
+            if self.config.get('webhooks')
+            else True
+        )
 
     def autoimporter_enabled_for(self, user):
-        if not self.config.get('autoimporter'):
-            return True
-        return user.is_authenticated and (user.admin or user.pro)
+        return (
+            user.is_authenticated and (user.admin or user.pro)
+            if self.config.get('autoimporter')
+            else True
+        )
 
     def better_stats_enabled_for(self, user, owner):
-        if not self.config.get('better_stats'):
-            return True
-        return owner.pro or user.is_authenticated and user.admin
+        return (
+            owner.pro or user.is_authenticated and user.admin
+            if self.config.get('better_stats')
+            else True
+        )
 
     def only_for_pro(self, feature):
         return self.config.get(feature)

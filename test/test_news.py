@@ -48,8 +48,7 @@ class TestNews(Test):
 
     @with_context
     def test_get_news(self):
-        mapping = dict()
-        mapping[pickle.dumps(self.news)] = 0
+        mapping = {pickle.dumps(self.news): 0}
         sentinel.master.zadd(myset, mapping)
         news = get_news()
         assert len(news) == 1, len(news)
@@ -57,8 +56,7 @@ class TestNews(Test):
 
     @with_context
     def test_get_news_with_score(self):
-        mapping = dict()
-        mapping[pickle.dumps(self.news)] = 0
+        mapping = {pickle.dumps(self.news): 0}
         sentinel.master.zadd(myset, mapping)
 
         news = get_news(score=1)
@@ -68,7 +66,7 @@ class TestNews(Test):
     def test_notify_news_admins(self):
         user = UserFactory.create(admin=True)
         notify_news_admins()
-        key = "notify:admin:%s" % user.id
+        key = f"notify:admin:{user.id}"
         value = sentinel.slave.get(key)
         err_msg = "Key should exist"
         assert value == str(1), err_msg
@@ -78,7 +76,7 @@ class TestNews(Test):
         user = UserFactory.create(admin=False)
         user2 = UserFactory.create(admin=False)
         notify_news_admins()
-        key = "notify:admin:%s" % user2.id
+        key = f"notify:admin:{user2.id}"
         value = sentinel.slave.get(key)
         err_msg = "Key should not exist"
         assert value is None, err_msg

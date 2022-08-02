@@ -141,7 +141,7 @@ class ProjectRepository(Repository):
     def _validate_can_be(self, action, element, klass=Project):
         if not isinstance(element, klass):
             name = element.__class__.__name__
-            msg = '%s cannot be %s by %s' % (name, action, self.__class__.__name__)
+            msg = f'{name} cannot be {action} by {self.__class__.__name__}'
             raise WrongObjectError(msg)
 
     def _delete_zip_files_from_store(self, project):
@@ -153,7 +153,7 @@ class ProjectRepository(Repository):
         csv_tasks_filename = csv_exporter.download_name(project, 'task')
         json_taskruns_filename = json_exporter.download_name(project, 'task_run')
         csv_taskruns_filename = csv_exporter.download_name(project, 'task_run')
-        container = "user_%s" % project.owner_id
+        container = f"user_{project.owner_id}"
         uploader.delete_file(json_tasks_filename, container)
         uploader.delete_file(csv_tasks_filename, container)
         uploader.delete_file(json_taskruns_filename, container)

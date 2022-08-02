@@ -25,6 +25,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.mutable import MutableDict
 
 
+
+
 class ProjectStats(db.Model, DomainObject):
     '''A Table with Project Stats for Projects.'''
 
@@ -54,4 +56,4 @@ class ProjectStats(db.Model, DomainObject):
     #: Last Activity
     last_activity = Column(Text, default=make_timestamp)
     #: Stats payload
-    info = Column(MutableDict.as_mutable(JSONB), default=dict())
+    info = Column(MutableDict.as_mutable(JSONB), default={})

@@ -54,10 +54,8 @@ class CsvExporter(Exporter):
                 zipped_datafile = tempfile.NamedTemporaryFile()
                 try:
                     _zip = self._zip_factory(zipped_datafile.name)
-                    _zip.write(
-                        datafile.name, secure_filename('%s_%s.csv' % (name, ty)))
-                    _zip.write(
-                        info_datafile.name, secure_filename('%s_%s_info_only.csv' % (name, ty)))
+                    _zip.write(datafile.name, secure_filename(f'{name}_{ty}.csv'))
+                    _zip.write(info_datafile.name, secure_filename(f'{name}_{ty}_info_only.csv'))
                     _zip.close()
                     container = "user_%d" % project.owner_id
                     _file = FileStorage(

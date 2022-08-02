@@ -66,11 +66,13 @@ class BulkTaskFlickrImport(BulkTaskImport):
             error_message = json.loads(response.text).get('message')
         else:
             error_message = response.text
-        valid = (response.status_code == 200
-                 and json.loads(response.text).get('stat') == 'ok')
-        if not valid:
+        if valid := (
+            response.status_code == 200
+            and json.loads(response.text).get('stat') == 'ok'
+        ):
+            return valid
+        else:
             raise BulkImportException(error_message)
-        return valid
 
     def _remaining_photos(self, url, payload, total_pages):
         """Return the remainin photos."""
@@ -94,12 +96,12 @@ class BulkTaskFlickrImport(BulkTaskImport):
 
     def _extract_photo_info(self, photo, owner):
         """Extract photo info."""
-        base_url = 'https://farm%s.staticflickr.com/%s/%s_%s' % (
-            photo['farm'], photo['server'], photo['id'], photo['secret'])
+        base_url = f"https://farm{photo['farm']}.staticflickr.com/{photo['server']}/{photo['id']}_{photo['secret']}"
+
         title = photo['title']
         url = ''.join([base_url, '.jpg'])
         url_m = ''.join([base_url, '_m.jpg'])
         url_b = ''.join([base_url, '_b.jpg'])
-        link = 'https://www.flickr.com/photos/%s/%s' % (owner, photo['id'])
+        link = f"https://www.flickr.com/photos/{owner}/{photo['id']}"
         return {"info": {'title': title, 'url': url,
                          'url_b': url_b, 'url_m': url_m, 'link': link}}

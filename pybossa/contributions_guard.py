@@ -33,8 +33,7 @@ class ContributionsGuard(object):
 
     def check_task_stamped(self, task, user):
         key = self._create_key(task, user)
-        task_requested = self.conn.get(key) is not None
-        return task_requested
+        return self.conn.get(key) is not None
 
     def retrieve_timestamp(self, task, user):
         key = self._create_key(task, user)

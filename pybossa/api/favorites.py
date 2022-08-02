@@ -54,7 +54,7 @@ class FavoritesAPI(APIBase):
             limit, offset, orderby = self._set_limit_and_offset()
             last_id = request.args.get('last_id')
             print(last_id)
-            desc = request.args.get('desc') if request.args.get('desc') else False
+            desc = request.args.get('desc') or False
             desc = fuzzyboolean(desc)
 
             tasks = task_repo.filter_tasks_by_user_favorites(uid, limit=limit,

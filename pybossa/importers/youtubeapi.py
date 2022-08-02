@@ -42,10 +42,9 @@ class BulkTaskYoutubeImport(BulkTaskImport):
     def _extract_video_info(self, item):
         """Extract youtube video information from snippet dict"""
         video_id = item['snippet']['resourceId']['videoId']
-        video_url = 'https://www.youtube.com/watch?v=' + video_id
-        oembed = '<iframe width="512" height="512" ' \
-            'src="https://www.youtube.com/embed/{}" ' \
-            'frameborder="0" allowfullscreen></iframe>'.format(video_id)
+        video_url = f'https://www.youtube.com/watch?v={video_id}'
+        oembed = f'<iframe width="512" height="512" src="https://www.youtube.com/embed/{video_id}" frameborder="0" allowfullscreen></iframe>'
+
         info = {'video_url': video_url, 'oembed': oembed}
         return {'info': info}
 
@@ -60,7 +59,7 @@ class BulkTaskYoutubeImport(BulkTaskImport):
             msg = gettext("URL is not a youtube domain.")
             raise BulkImportException(msg)
         params = parse_qs(url_data.query)
-        if not ('list' in params):
+        if 'list' not in params:
             msg = gettext("No playlist in URL found.")
             raise BulkImportException(msg)
         return (params['list'][0])

@@ -55,8 +55,9 @@ class FlickrClient(object):
 
     def _extract_album_info(self, album):
         """Extract album information."""
-        info = {'title': album['title']['_content'],
-                'photos': album['photos'],
-                'id': album['id'],
-                'thumbnail_url': album['primary_photo_extras']['url_q']}
-        return info
+        return {
+            'title': album['title']['_content'],
+            'photos': album['photos'],
+            'id': album['id'],
+            'thumbnail_url': album['primary_photo_extras']['url_q'],
+        }

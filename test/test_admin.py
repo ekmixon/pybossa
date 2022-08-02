@@ -63,7 +63,7 @@ class TestAdmin(web.Helper):
         assert "Settings" in str(res.data), err_msg
         divs = ['featured-apps', 'users', 'categories', 'users-list']
         for div in divs:
-            err_msg = "There should be a button for managing %s" % div
+            err_msg = f"There should be a button for managing {div}"
             assert dom.find(id=div) is not None, err_msg
         key = "notify:admin:1"
         sentinel_mock.assert_called_with(key)
@@ -675,16 +675,16 @@ class TestAdmin(web.Helper):
         assert res.status == "200 OK", err_msg
         res = self.update_project(method="GET")
         assert "Update" in str(res.data),\
-            "The project should be updated by admin users"
+                "The project should be updated by admin users"
         res = self.update_project(new_name="Root",
                                   new_short_name="rootsampleapp")
         res = self.app.get('/project/rootsampleapp', follow_redirects=True)
         assert "Root" in str(res.data), "The app should be updated by admin users"
 
         app = db.session.query(Project)\
-                .filter_by(short_name="rootsampleapp").first()
+                    .filter_by(short_name="rootsampleapp").first()
         juan = db.session.query(User).filter_by(name="juan").first()
-        assert app.owner_id == juan.id, "Owner_id should be: %s" % juan.id
+        assert app.owner_id == juan.id, f"Owner_id should be: {juan.id}"
         assert app.owner_id != 1, "The owner should be not updated"
         res = self.update_project(short_name="rootsampleapp",
                                   new_short_name="sampleapp",
@@ -869,7 +869,7 @@ class TestAdmin(web.Helper):
         category = obj.dictize()
 
         # Anonymous user GET
-        url = '/admin/categories/update/%s' % obj.id
+        url = f'/admin/categories/update/{obj.id}'
         res = self.app_get_json(url, follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = "Anonymous users should be redirected to sign in"
@@ -939,7 +939,7 @@ class TestAdmin(web.Helper):
         del category['info']
 
         # Anonymous user GET
-        url = '/admin/categories/update/%s' % obj.id
+        url = f'/admin/categories/update/{obj.id}'
         res = self.app.get(url, follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = "Anonymous users should be redirected to sign in"
@@ -990,7 +990,7 @@ class TestAdmin(web.Helper):
         category = obj.dictize()
 
         # Anonymous user GET
-        url = '/admin/categories/del/%s' % obj.id
+        url = f'/admin/categories/del/{obj.id}'
         res = self.app_get_json(url, follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = "Anonymous users should be redirected to sign in"
@@ -1041,7 +1041,7 @@ class TestAdmin(web.Helper):
 
         # Now try to delete the only available Category
         obj = db.session.query(Category).first()
-        url = '/admin/categories/del/%s' % obj.id
+        url = f'/admin/categories/del/{obj.id}'
         category = obj.dictize()
         res = self.app_post_json(url, data=category)
         print(res.data)
@@ -1062,7 +1062,7 @@ class TestAdmin(web.Helper):
         del category['info']
 
         # Anonymous user GET
-        url = '/admin/categories/del/%s' % obj.id
+        url = f'/admin/categories/del/{obj.id}'
         res = self.app.get(url, follow_redirects=True)
         dom = BeautifulSoup(res.data)
         err_msg = "Anonymous users should be redirected to sign in"
@@ -1104,7 +1104,7 @@ class TestAdmin(web.Helper):
 
         # Now try to delete the only available Category
         obj = db.session.query(Category).first()
-        url = '/admin/categories/del/%s' % obj.id
+        url = f'/admin/categories/del/{obj.id}'
         category = obj.dictize()
         del category['info']
         res = self.app.post(url, data=category, follow_redirects=True)

@@ -59,10 +59,7 @@ def _create_url_token_key(token):
 
 
 def generate_url_token(user_email):
-    if six.PY2:  # pragma: no cover
-        token = uuid.uuid4().get_hex()
-    else:
-        token = uuid.uuid4().hex
+    token = uuid.uuid4().get_hex() if six.PY2 else uuid.uuid4().hex
     key = _create_url_token_key(token)
     conn.delete(token)
     conn.setex(key, OTP_TTL, user_email)

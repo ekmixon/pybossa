@@ -54,7 +54,7 @@ class TestAPI(object):
                 data = json.dumps(data)
                 res = self.app.post(url, data=data)
             elif action == 'put':
-                _url = '/api/%s/%s' % (obj, i)
+                _url = f'/api/{obj}/{i}'
 
                 if obj == 'project':
                     data = dict(name=i,
@@ -64,15 +64,15 @@ class TestAPI(object):
 
                 res = self.app.put(_url + url, data=data)
             elif action == 'delete':
-                _url = '/api/%s/%s' % (obj, i)
+                _url = f'/api/{obj}/{i}'
                 res = self.app.delete(_url + url)
             else:
                 raise Exception("action not found")
             # Error message
             err_msg = "GET X-RateLimit-Remaining not working"
             # Tests
-            print("X-RateLimit-Remaining: %s" % res.headers['X-RateLimit-Remaining'])
-            print("Expected value: %s" % i)
+            print(f"X-RateLimit-Remaining: {res.headers['X-RateLimit-Remaining']}")
+            print(f"Expected value: {i}")
             assert int(res.headers['X-RateLimit-Remaining']) == i, err_msg
             if res.headers['X-RateLimit-Remaining'] == 0:
                 error = json.loads(res.data)

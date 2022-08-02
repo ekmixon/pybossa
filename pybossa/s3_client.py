@@ -23,7 +23,7 @@ from xml.dom import minidom
 class S3Client(object):
 
     def objects(self, bucket_name):
-        response = requests.get('https://%s.s3.amazonaws.com/' % bucket_name)
+        response = requests.get(f'https://{bucket_name}.s3.amazonaws.com/')
         if response.status_code == 404:
             raise NoSuchBucket('Bucket "%s" does not exist' % bucket_name)
         if response.status_code == 403:

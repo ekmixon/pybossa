@@ -58,15 +58,14 @@ class GlobalStatsAPI(APIBase):
         # Add Categories
         categories = cached_categories.get_used()
         for c in categories:
-            datum = dict()
-            datum[c['short_name']] = cached_projects.n_count(c['short_name'])
+            datum = {c['short_name']: cached_projects.n_count(c['short_name'])}
             data['categories'].append(datum)
         # Add Featured
-        datum = dict()
+        datum = {}
         datum['featured'] = cached_projects.n_count('featured')
         data['categories'].append(datum)
         # Add Draft
-        datum = dict()
+        datum = {}
         datum['draft'] = cached_projects.n_count('draft')
         data['categories'].append(datum)
         return Response(json.dumps(data), 200, mimetype='application/json')

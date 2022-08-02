@@ -45,16 +45,15 @@ class Category(db.Model, DomainObject):
     info = Column(MutableDict.as_mutable(JSONB), default=dict())
 
     @classmethod
-    def public_attributes(self):
+    def public_attributes(cls):
         """Return a list of public attributes."""
         return ['description', 'short_name', 'created', 'id', 'name', 'info']
 
     @classmethod
-    def public_info_keys(self):
+    def public_info_keys(cls):
         """Return a list of public info keys."""
         default = []
-        extra = current_app.config.get('CATEGORY_INFO_PUBLIC_FIELDS')
-        if extra:
+        if extra := current_app.config.get('CATEGORY_INFO_PUBLIC_FIELDS'):
             return list(set(default).union(set(extra)))
         else:
             return default

@@ -87,9 +87,7 @@ class Project(db.Model, DomainObject):
         return self.info.get('passwd_hash')
 
     def get_passwd(self):
-        if self.needs_password():
-            return signer.loads(self.get_passwd_hash())
-        return None
+        return signer.loads(self.get_passwd_hash()) if self.needs_password() else None
 
     def set_password(self, password):
         if len(password) > 1:
@@ -99,9 +97,7 @@ class Project(db.Model, DomainObject):
         return False
 
     def check_password(self, password):
-        if self.needs_password():
-            return self.get_passwd() == password
-        return False
+        return self.get_passwd() == password if self.needs_password() else False
 
     def has_autoimporter(self):
         return self.get_autoimporter() is not None
@@ -122,7 +118,7 @@ class Project(db.Model, DomainObject):
             return self.info.get('task_presenter') not in ('', None)
 
     @classmethod
-    def public_attributes(self):
+    def public_attributes(cls):
         """Return a list of public attributes."""
         return ['id', 'description', 'info', 'n_tasks', 'n_volunteers', 'name',
                 'overall_progress', 'short_name', 'created', 'category_id',
@@ -131,12 +127,11 @@ class Project(db.Model, DomainObject):
                 'owner_id', 'n_completed_tasks', 'n_blogposts', 'owners_ids']
 
     @classmethod
-    def public_info_keys(self):
+    def public_info_keys(cls):
         """Return a list of public info keys."""
         default = ['container', 'thumbnail', 'thumbnail_url',
                    'task_presenter', 'tutorial', 'sched']
-        extra = current_app.config.get('PROJECT_INFO_PUBLIC_FIELDS')
-        if extra:
+        if extra := current_app.config.get('PROJECT_INFO_PUBLIC_FIELDS'):
             return list(set(default).union(set(extra)))
         else:
             return default

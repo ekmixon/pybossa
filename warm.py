@@ -51,7 +51,7 @@ def warm_cache():
                 cached_apps.n_completed_tasks(id)
                 cached_apps.n_volunteers(id)
                 if n_task_runs >= 1000 or featured:
-                    print("Getting stats for %s as it has %s task runs" % (short_name, n_task_runs))
+                    print(f"Getting stats for {short_name} as it has {n_task_runs} task runs")
                     stats.get_stats(id)
                 apps_cached.append(id)
 
@@ -98,17 +98,20 @@ def _main(functions_or_object):
     usage = '''%prog {action}
 
 Actions:
-    '''
-    usage += '\n    '.join(
-        [ '%s: %s' % (name, m.__doc__.split('\n')[0] if m.__doc__ else '') for (name,m)
-        in sorted(_methods.items()) ])
+    ''' + '\n    '.join(
+        [
+            '%s: %s' % (name, m.__doc__.split('\n')[0] if m.__doc__ else '')
+            for (name, m) in sorted(_methods.items())
+        ]
+    )
+
     parser = optparse.OptionParser(usage)
     # Optional: for a config file
     # parser.add_option('-c', '--config', dest='config',
     #         help='Config file to use.')
     options, args = parser.parse_args()
 
-    if not args or not args[0] in _methods:
+    if not args or args[0] not in _methods:
         parser.print_help()
         sys.exit(1)
 

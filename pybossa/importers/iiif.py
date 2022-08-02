@@ -60,28 +60,29 @@ class BulkTaskIIIFImporter(BulkTaskImport):
 
             for img in images:
                 row = {
-                    'tileSource': '{}/info.json'.format(img),
+                    'tileSource': f'{img}/info.json',
                     'target': canvas['@id'],
                     'manifest': manifest_uri,
                     'link': self._get_link(manifest_uri, i),
-                    'url': '{}/full/max/0/default.jpg'.format(img),
-                    'url_m': '{}/full/240,/0/default.jpg'.format(img),
-                    'url_b': '{}/full/1024,/0/default.jpg'.format(img)
+                    'url': f'{img}/full/max/0/default.jpg',
+                    'url_m': f'{img}/full/240,/0/default.jpg',
+                    'url_b': f'{img}/full/1024,/0/default.jpg',
                 }
+
                 data.append(row)
         return data
 
     def _get_link(self, manifest_uri, canvas_index):
         """Return a Universal Viewer URL for sharing."""
         base = 'http://universalviewer.io/uv.html'
-        query = '?manifest={}#?cv={}'.format(manifest_uri, canvas_index)
+        query = f'?manifest={manifest_uri}#?cv={canvas_index}'
         return base + query
 
     def _get_validated_manifest(self, manifest_uri, version):
         """Return a validated manifest."""
         r = requests.get(manifest_uri)
         if r.status_code != 200:
-            err_msg = 'Invalid manifest URI: {} error'.format(r.status_code)
+            err_msg = f'Invalid manifest URI: {r.status_code} error'
             raise BulkImportException(err_msg)
         reader = ManifestReader(r.text, version=version)
         try:

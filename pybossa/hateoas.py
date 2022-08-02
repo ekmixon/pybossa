@@ -30,7 +30,7 @@ class Hateoas(object):
     def create_link(self, item_id, title, rel='self'):
         """Create hateoas link."""
         # title = item.__class__.__name__.lower()
-        method = ".api_%s" % title
+        method = f".api_{title}"
         href = url_for(method, oid=item_id, _external=True)
         return self.link(rel, title, href)
 

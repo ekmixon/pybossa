@@ -106,54 +106,56 @@ class TaskRunAPI(APIBase):
         request_headers = request.headers.get('Content-Type')
         if request_headers is None:
             request_headers = []
-        if (content_type in request_headers and
-                cls_name in self.allowed_classes_upload):
-            data = dict()
-            for key in list(request.form.keys()):
-                if key in ['project_id', 'task_id']:
-                    data[key] = int(request.form[key])
-                elif key == 'info':
-                    data[key] = json.loads(request.form[key])
-                else:
-                    data[key] = request.form[key]
-            # inst = self._create_instance_from_request(data)
-            data = self.hateoas.remove_links(data)
-            inst = self.__class__(**data)
-            self._add_user_info(inst)
-            is_authorized(current_user, 'create', inst)
-            upload_method = current_app.config.get('UPLOAD_METHOD')
-            if request.files.get('file') is None:
-                raise AttributeError
-            _file = request.files['file']
-            if current_user.is_authenticated:
-                container = "user_%s" % current_user.id
-            else:
-                container = "anonymous"
-            if _file.filename == 'blob' or _file.filename is None:
-                _file.filename = "%s.png" % time.time()
-            uploader.upload_file(_file,
-                                 container=container)
-            avatar_absolute = current_app.config.get('AVATAR_ABSOLUTE')
-            file_url = get_avatar_url(upload_method,
-                                      _file.filename,
-                                      container,
-                                      avatar_absolute)
-            data['media_url'] = file_url
-            if data.get('info') is None:
-                data['info'] = dict()
-            data['info']['container'] = container
-            data['info']['file_name'] = _file.filename
-            return data
-        else:
+        if (
+            content_type not in request_headers
+            or cls_name not in self.allowed_classes_upload
+        ):
             return None
+        data = {}
+        for key in list(request.form.keys()):
+            if key in ['project_id', 'task_id']:
+                data[key] = int(request.form[key])
+            elif key == 'info':
+                data[key] = json.loads(request.form[key])
+            else:
+                data[key] = request.form[key]
+        # inst = self._create_instance_from_request(data)
+        data = self.hateoas.remove_links(data)
+        inst = self.__class__(**data)
+        self._add_user_info(inst)
+        is_authorized(current_user, 'create', inst)
+        upload_method = current_app.config.get('UPLOAD_METHOD')
+        if request.files.get('file') is None:
+            raise AttributeError
+        _file = request.files['file']
+        container = (
+            f"user_{current_user.id}"
+            if current_user.is_authenticated
+            else "anonymous"
+        )
+
+        if _file.filename == 'blob' or _file.filename is None:
+            _file.filename = f"{time.time()}.png"
+        uploader.upload_file(_file,
+                             container=container)
+        avatar_absolute = current_app.config.get('AVATAR_ABSOLUTE')
+        file_url = get_avatar_url(upload_method,
+                                  _file.filename,
+                                  container,
+                                  avatar_absolute)
+        data['media_url'] = file_url
+        if data.get('info') is None:
+            data['info'] = {}
+        data['info']['container'] = container
+        data['info']['file_name'] = _file.filename
+        return data
 
     def _file_delete(self, request, obj):
         """Delete file object."""
         cls_name = self.__class__.__name__.lower()
-        if cls_name in self.allowed_classes_upload:
-            if type(obj.info) == dict:
-                keys = list(obj.info.keys())
-                if 'file_name' in keys and 'container' in keys:
-                    ensure_authorized_to('delete', obj)
-                    uploader.delete_file(obj.info['file_name'],
-                                         obj.info['container'])
+        if cls_name in self.allowed_classes_upload and type(obj.info) == dict:
+            keys = list(obj.info.keys())
+            if 'file_name' in keys and 'container' in keys:
+                ensure_authorized_to('delete', obj)
+                uploader.delete_file(obj.info['file_name'],
+                                     obj.info['container'])

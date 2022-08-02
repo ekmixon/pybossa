@@ -30,10 +30,10 @@ class TestWebModule(Test):
     def test_url_for_other_page(self):
         """Test url_for_other page works."""
         with self.flask_app.test_request_context('/'):
+            err_msg = "The page url is not built correctly"
             for i in range(1, 3):
                 url = url_for_other_page(i)
-                tmp = '/?page=%s' % i
-                err_msg = "The page url is not built correctly"
+                tmp = f'/?page={i}'
                 assert tmp == url, err_msg
 
     @with_context

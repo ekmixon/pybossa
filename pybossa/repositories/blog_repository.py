@@ -71,5 +71,5 @@ class BlogRepository(Repository):
     def _validate_can_be(self, action, blogpost):
         if not isinstance(blogpost, Blogpost):
             name = blogpost.__class__.__name__
-            msg = '%s cannot be %s by %s' % (name, action, self.__class__.__name__)
+            msg = f'{name} cannot be {action} by {self.__class__.__name__}'
             raise WrongObjectError(msg)

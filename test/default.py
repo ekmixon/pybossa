@@ -75,7 +75,7 @@ def delete_indexes():
     sql = text('''select * from pg_indexes WHERE tablename = 'users_rank' ''')
     results = db.session.execute(sql)
     for row in results:
-        sql = 'drop index %s;' % row.indexname
+        sql = f'drop index {row.indexname};'
         db.session.execute(sql)
         db.session.commit()
 
@@ -186,9 +186,9 @@ class Test(object):
             }
 
         # Create the task and taskruns for the first project
-        for i in range (0,10):
-             task, task_run = self.create_task_and_run(task_info, task_run_info, project, user,i)
-             db.session.add_all([task, task_run])
+        for i in range(10):
+            task, task_run = self.create_task_and_run(task_info, task_run_info, project, user,i)
+            db.session.add_all([task, task_run])
         db.session.commit()
         db.session.remove()
 
@@ -243,11 +243,13 @@ class Test(object):
         user.set_password(self.password)
 
         user2 = User(
-                email_addr = self.email_addr2,
-                name = self.name2,
-                passwd_hash = self.password + "2",
-                fullname = self.fullname2,
-                api_key=self.api_key_2)
+            email_addr=self.email_addr2,
+            name=self.name2,
+            passwd_hash=f"{self.password}2",
+            fullname=self.fullname2,
+            api_key=self.api_key_2,
+        )
+
 
         user2.set_password(self.password)
 
@@ -259,15 +261,14 @@ class Test(object):
             if category is None:
                 self._create_categories()
                 category = db.session.query(Category).first()
-            project = Project(
-                    name=self.project_name,
-                    short_name=self.project_short_name,
-                    description='description',
-                    category_id=category.id,
-                    published=True,
-                    info=info
-                )
-            return project
+            return Project(
+                name=self.project_name,
+                short_name=self.project_short_name,
+                description='description',
+                category_id=category.id,
+                published=True,
+                info=info,
+            )
 
     def create_task_and_run(self,task_info, task_run_info, project, user, order):
         task = Task(project_id = 1, state = '0', info = task_info, n_answers=10)
@@ -282,10 +283,12 @@ class Test(object):
             task_run.user = user
         else:
             task_run = TaskRun(
-                    project_id = 1,
-                    task_id = 1,
-                    user_ip = '127.0.0.%s' % order,
-                    info = task_run_info)
+                project_id=1,
+                task_id=1,
+                user_ip=f'127.0.0.{order}',
+                info=task_run_info,
+            )
+
         task_run.task = task
         return task, task_run
 
@@ -351,9 +354,9 @@ class Fixtures:
             }
 
         # Create the task and taskruns for the first project
-        for i in range (0,10):
-             task, task_run = Fixtures.create_task_and_run(task_info, task_run_info, project, user,i)
-             db.session.add_all([task, task_run])
+        for i in range(10):
+            task, task_run = Fixtures.create_task_and_run(task_info, task_run_info, project, user,i)
+            db.session.add_all([task, task_run])
         db.session.commit()
         db.session.remove()
 
@@ -409,11 +412,13 @@ class Fixtures:
         user.set_password(cls.password)
 
         user2 = User(
-                email_addr = cls.email_addr2,
-                name = cls.name2,
-                passwd_hash = cls.password + "2",
-                fullname = cls.fullname2,
-                api_key=cls.api_key_2)
+            email_addr=cls.email_addr2,
+            name=cls.name2,
+            passwd_hash=f"{cls.password}2",
+            fullname=cls.fullname2,
+            api_key=cls.api_key_2,
+        )
+
 
         user2.set_password(cls.password)
 
@@ -425,15 +430,14 @@ class Fixtures:
         if category is None:
             cls.create_categories()
             category = db.session.query(Category).first()
-        project = Project(
-                name=cls.project_name,
-                short_name=cls.project_short_name,
-                description='description',
-                category_id=category.id,
-                published=True,
-                info=info
-            )
-        return project
+        return Project(
+            name=cls.project_name,
+            short_name=cls.project_short_name,
+            description='description',
+            category_id=category.id,
+            published=True,
+            info=info,
+        )
 
     @classmethod
     def create_task_and_run(cls,task_info, task_run_info, project, user, order):
@@ -449,10 +453,12 @@ class Fixtures:
             task_run.user = user
         else:
             task_run = TaskRun(
-                    project_id = 1,
-                    task_id = 1,
-                    user_ip = '127.0.0.%s' % order,
-                    info = task_run_info)
+                project_id=1,
+                task_id=1,
+                user_ip=f'127.0.0.{order}',
+                info=task_run_info,
+            )
+
         task_run.task = task
         return task, task_run
 
@@ -472,7 +478,6 @@ class Fixtures:
 def assert_not_raises(exception, call, *args, **kwargs):
     try:
         call(*args, **kwargs)
-        assert True
     except exception as ex:
         assert False, str(ex)
 

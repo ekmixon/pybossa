@@ -26,13 +26,12 @@ def leaderboard(info=None):
     materialized_view = 'users_rank'
     materialized_view_idx = 'users_rank_idx'
     if info:
-        materialized_view = 'users_rank_%s' % info
-        materialized_view_idx = 'users_rank_%s_idx' % info
+        materialized_view = f'users_rank_{info}'
+        materialized_view_idx = f'users_rank_{info}_idx'
 
     if exists_materialized_view(db, materialized_view):
         return refresh_materialized_view(db, materialized_view)
-    else:
-        sql = '''
+    sql = '''
                    CREATE MATERIALIZED VIEW "{}" AS WITH scores AS (
                         SELECT "user".*, COUNT(task_run.user_id) AS score
                         FROM "user" LEFT JOIN task_run
@@ -40,18 +39,18 @@ def leaderboard(info=None):
                         "user".restrict=false GROUP BY "user".id
                     ) SELECT *, row_number() OVER (ORDER BY score DESC) as rank FROM scores;
               '''.format(materialized_view)
-        if info:
-            sql = '''
+    if info:
+        sql = '''
                        CREATE MATERIALIZED VIEW "{}" AS WITH scores AS (
                             SELECT "user".*, COALESCE(CAST("user".info->>'{}' AS INTEGER), 0) AS score
                             FROM "user" where "user".restrict=false ORDER BY score DESC) SELECT *, row_number() OVER (ORDER BY score DESC) as rank FROM scores;
                   '''.format(materialized_view, info)
-        db.session.execute(sql)
-        db.session.commit()
-        sql = '''
+    db.session.execute(sql)
+    db.session.commit()
+    sql = '''
               CREATE UNIQUE INDEX "{}"
                on "{}"(id, rank);
               '''.format(materialized_view_idx, materialized_view)
-        db.session.execute(sql)
-        db.session.commit()
-        return "Materialized view created"
+    db.session.execute(sql)
+    db.session.commit()
+    return "Materialized view created"

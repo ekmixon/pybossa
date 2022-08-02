@@ -31,9 +31,11 @@ def get_active_user_key(project_id):
 def get_active_user_count(project_id, conn):
     now = time()
     key = get_active_user_key(project_id)
-    to_delete = [user for user, expiration in iteritems(conn.hgetall(key))
-                 if float(expiration) < now]
-    if to_delete:
+    if to_delete := [
+        user
+        for user, expiration in iteritems(conn.hgetall(key))
+        if float(expiration) < now
+    ]:
         conn.hdel(key, *to_delete)
     return conn.hlen(key)
 

@@ -53,7 +53,7 @@ class TestHateoas(Test):
 
         project_link = self.hateoas.link(rel='self', title='project',
                                      href='https://localhost/api/project/1')
-        err_msg = "The object link is wrong: %s" % output['link']
+        err_msg = f"The object link is wrong: {output['link']}"
         assert project_link == output['link'], err_msg
 
         # For task
@@ -63,7 +63,7 @@ class TestHateoas(Test):
         assert output['link'] is not None, err_msg
         task_link = self.hateoas.link(rel='self', title='task',
                                       href='https://localhost/api/task/1')
-        err_msg = "The object link is wrong: %s" % output['link']
+        err_msg = f"The object link is wrong: {output['link']}"
         assert task_link == output['link'], err_msg
         err_msg = "There should be one parent link: project"
         assert output.get('links') is not None, err_msg
@@ -80,7 +80,7 @@ class TestHateoas(Test):
         assert output['link'] is not None, err_msg
         task_link = self.hateoas.link(rel='self', title='taskrun',
                                       href='https://localhost/api/taskrun/1')
-        err_msg = "The object link is wrong: %s" % output['link']
+        err_msg = f"The object link is wrong: {output['link']}"
         assert task_link == output['link'], err_msg
         err_msg = "There should be two parent links: project and task"
         assert output.get('links') is not None, err_msg
@@ -103,7 +103,7 @@ class TestHateoas(Test):
         assert output['link'] is not None, err_msg
         category_link = self.hateoas.link(rel='self', title='category',
                                           href='https://localhost/api/category/1')
-        err_msg = "The object link is wrong: %s" % output['link']
+        err_msg = f"The object link is wrong: {output['link']}"
         assert category_link == output['link'], err_msg
         err_msg = "There should be no other links"
         assert output.get('links') is None, err_msg
@@ -136,7 +136,7 @@ class TestHateoas(Test):
         project_link = self.hateoas.link(rel='self', title='project',
                                      href='https://localhost/api/project/1')
 
-        err_msg = "The object link is wrong: %s" % output['link']
+        err_msg = f"The object link is wrong: {output['link']}"
         assert project_link == output['link'], err_msg
 
         err_msg = "There should be a Links list with the category URI"
@@ -153,7 +153,7 @@ class TestHateoas(Test):
         assert output['link'] is not None, err_msg
         task_link = self.hateoas.link(rel='self', title='task',
                                       href='https://localhost/api/task/1')
-        err_msg = "The object link is wrong: %s" % output['link']
+        err_msg = f"The object link is wrong: {output['link']}"
         assert task_link == output['link'], err_msg
         err_msg = "There should be one parent link: project"
         assert output.get('links') is not None, err_msg
@@ -170,7 +170,7 @@ class TestHateoas(Test):
         assert output['link'] is not None, err_msg
         task_link = self.hateoas.link(rel='self', title='taskrun',
                                       href='https://localhost/api/taskrun/1')
-        err_msg = "The object link is wrong: %s" % output['link']
+        err_msg = f"The object link is wrong: {output['link']}"
         assert task_link == output['link'], err_msg
         err_msg = "There should be two parent links: project and task"
         assert output.get('links') is not None, err_msg
@@ -198,7 +198,7 @@ class TestHateoas(Test):
         assert output['link'] is not None, err_msg
         category_link = self.hateoas.link(rel='self', title='category',
                                       href='https://localhost/api/category/1')
-        err_msg = "The object link is wrong: %s" % output['link']
+        err_msg = f"The object link is wrong: {output['link']}"
         assert category_link == output['link'], err_msg
         err_msg = "There should be no other links"
         assert output.get('links') is None, err_msg

@@ -67,7 +67,7 @@ class AuditLogger(object):
             return
         old = old_project.dictize()
         new = new_project.dictize()
-        attributes = (set(old.keys()) | set(new.keys())) - set(['updated'])
+        attributes = (set(old.keys()) | set(new.keys())) - {'updated'}
         changes = {attr: (old.get(attr), new.get(attr))
                    for attr in attributes if old.get(attr) != new.get(attr)}
         for attr in changes:

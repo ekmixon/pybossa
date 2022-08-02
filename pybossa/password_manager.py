@@ -33,8 +33,7 @@ class ProjectPasswdManager(object):
                                          (current_user.admin or
                                           current_user.id in project.owners_ids)):
             cookie = self.cookie_handler.get_cookie_from(project)
-            request_passwd = user_id_or_ip not in cookie
-            return request_passwd
+            return user_id_or_ip not in cookie
         return False
 
     def validates(self, password, project):

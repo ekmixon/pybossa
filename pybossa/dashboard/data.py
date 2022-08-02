@@ -24,7 +24,7 @@ from datetime import datetime
 
 def _select_from_materialized_view(view, n_days=None):
     if n_days is None:
-        sql = text("SELECT * FROM %s" % view)
+        sql = text(f"SELECT * FROM {view}")
         options = {}
     else:
         sql = text("""SELECT COUNT(user_id)
@@ -73,10 +73,7 @@ def format_returning_users():
     """Return returning users data."""
     formatted_users = dict(labels=[], series=[[]])
     for i in range(1, 8):
-        if i == 1:
-            label = "%s day" % i
-        else:
-            label = "%s days" % i
+        label = f"{i} day" if i == 1 else f"{i} days"
         results = _select_from_materialized_view(
             'dashboard_week_returning_users',
             n_days=i)
@@ -112,13 +109,12 @@ def _graph_data_from_query(results, column, label=None):
     for row in results:
         labels.append(label or row.day.strftime('%Y-%m-%d'))
         series.append(getattr(row, column))
-    if len(labels) == 0:
+    if not labels:
         labels.append(label or datetime.now().strftime('%Y-%m-%d'))
-    if len(series) == 0:
+    if not series:
         series.append(0)
 
-    new_users_week = dict(labels=labels, series=[series])
-    return new_users_week
+    return dict(labels=labels, series=[series])
 
 
 def _format_projects_data(results):

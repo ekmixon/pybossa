@@ -25,7 +25,7 @@ u = User()
 
 def get_leaderboard(top_users=20, user_id=None, window=0, info=None):
     """Return a list of top_users and if user_id return its position."""
-    materialized_view = "users_rank_%s" % info
+    materialized_view = f"users_rank_{info}"
     sql = text('''SELECT * from users_rank WHERE rank <= :top_users 
                ORDER BY rank;''')
     if info:
@@ -57,11 +57,9 @@ def get_leaderboard(top_users=20, user_id=None, window=0, info=None):
             results = db.session.execute(sql, dict(user_id=user_id,
                                          top=top,
                                          low=low))
-            for row in results:
-                top_users.append(format_user(row))
-        else:
-            if user:
-                top_users.append(user)
+            top_users.extend(format_user(row) for row in results)
+        elif user:
+            top_users.append(user)
         return top_users
     return top_users
 
@@ -78,5 +76,4 @@ def format_user(user):
         created=user.created,
         restrict=user.restrict,
         score=user.score)
-    tmp = u.to_public_json(data=user)
-    return tmp
+    return u.to_public_json(data=user)

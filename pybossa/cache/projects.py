@@ -75,10 +75,7 @@ def browse_tasks(project_id, limit=10, offset=0):
 def _pct_status(n_task_runs, n_answers):
     """Return percentage status."""
     if n_answers != 0 and n_answers is not None:
-        if n_task_runs > n_answers:
-            return float(1)
-        else:
-            return float(n_task_runs) / n_answers
+        return float(1) if n_task_runs > n_answers else float(n_task_runs) / n_answers
     return float(0)
 
 
@@ -159,9 +156,9 @@ def n_anonymous_volunteers(project_id):
 
 def n_volunteers(project_id):
     """Return total number of volunteers of a project."""
-    total = (n_anonymous_volunteers(project_id) +
-             n_registered_volunteers(project_id))
-    return total
+    return n_anonymous_volunteers(project_id) + n_registered_volunteers(
+        project_id
+    )
 
 
 @memoize(timeout=timeouts.get('APP_TIMEOUT'))
@@ -194,10 +191,7 @@ def last_activity(project_id):
 
     results = session.execute(sql, dict(project_id=project_id))
     for row in results:
-        if row is not None:
-            return row[0]
-        else:  # pragma: no cover
-            return None
+        return row[0] if row is not None else None
 
 
 @memoize(timeout=timeouts.get('APP_TIMEOUT'))
@@ -211,10 +205,7 @@ def average_contribution_time(project_id):
     results = session.execute(sql, dict(project_id=project_id)).fetchall()
     for row in results:
         average_time = row.average_time
-    if average_time:
-        return average_time.total_seconds()
-    else:
-        return 0
+    return average_time.total_seconds() if average_time else 0
 
 
 def n_blogposts(project_id):
@@ -418,11 +409,7 @@ def get_from_pro_user():
     sql = text('''SELECT project.id, project.short_name FROM project, "user"
                WHERE project.owner_id="user".id AND "user".pro=True and project.published=True;''')
     results = db.slave_session.execute(sql)
-    projects = []
-    for row in results:
-        project = dict(id=row.id, short_name=row.short_name)
-        projects.append(project)
-    return projects
+    return [dict(id=row.id, short_name=row.short_name) for row in results]
 
 
 def reset():

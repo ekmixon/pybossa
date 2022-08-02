@@ -52,7 +52,7 @@ class TestValidator(Test):
         """Test VALIDATOR NotAllowedChars works."""
         with self.flask_app.test_request_context('/'):
             f = LoginForm()
-            f.email.data = self.email_addr + "$"
+            f.email.data = f"{self.email_addr}$"
             u = validator.NotAllowedChars()
             u.__call__(f, f.email)
 
@@ -126,7 +126,7 @@ class TestRegisterForm(Test):
         form = RegisterForm()
 
         for field in self.fields:
-            assert form.__contains__(field), 'Field %s is not in form' %field
+            assert form.__contains__(field), f'Field {field} is not in form'
 
     @with_context
     def test_register_form_validates_with_valid_fields(self):
@@ -146,7 +146,8 @@ class TestRegisterForm(Test):
     def test_register_name_length(self):
         self.fill_in_data['name'] = 'a'
         form = RegisterForm(**self.fill_in_data)
-        error_message = "User name must be between 3 and %s characters long" % USER_NAME_MAX_LENGTH
+        error_message = f"User name must be between 3 and {USER_NAME_MAX_LENGTH} characters long"
+
 
         assert not form.validate()
         assert error_message in form.errors['name'], form.errors
@@ -180,7 +181,10 @@ class TestRegisterForm(Test):
     def test_register_email_length(self):
         self.fill_in_data['email_addr'] = ''
         form = RegisterForm(**self.fill_in_data)
-        error_message = "Email must be between 3 and %s characters long" % EMAIL_MAX_LENGTH
+        error_message = (
+            f"Email must be between 3 and {EMAIL_MAX_LENGTH} characters long"
+        )
+
 
         assert not form.validate()
         assert error_message in form.errors['email_addr'], form.errors
@@ -197,7 +201,8 @@ class TestRegisterForm(Test):
     def test_register_fullname_length(self):
         self.fill_in_data['fullname'] = 'a'
         form = RegisterForm(**self.fill_in_data)
-        error_message = "Full name must be between 3 and %s characters long" % USER_FULLNAME_MAX_LENGTH
+        error_message = f"Full name must be between 3 and {USER_FULLNAME_MAX_LENGTH} characters long"
+
 
         assert not form.validate()
         assert error_message in form.errors['fullname'], form.errors
@@ -314,7 +319,7 @@ class TestRegisterFormWithUserPrefMetadata(Test):
         form = RegisterFormWithUserPrefMetadata()
 
         for field in self.fields:
-            assert form.__contains__(field), 'Field %s is not in form' %field
+            assert form.__contains__(field), f'Field {field} is not in form'
 
     @with_request_context
     def test_register_form_with_upref_mdata_validates_with_valid_fields(self):

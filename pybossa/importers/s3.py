@@ -37,7 +37,7 @@ class BulkTaskS3Import(BulkTaskImport):
         return len(self.tasks())
 
     def _create_task_info(self, filename):
-        url = 'https://%s.s3.amazonaws.com/%s' % (self.bucket, filename)
+        url = f'https://{self.bucket}.s3.amazonaws.com/{filename}'
         info = {'filename': filename,
                 'url': url,
                 'link': url}
@@ -45,16 +45,16 @@ class BulkTaskS3Import(BulkTaskImport):
             extra_fields = {'url_m': url,
                             'url_b': url,
                             'title': filename}
-            info.update(extra_fields)
+            info |= extra_fields
         if self._is_video_file(filename):
             extra_fields = {'video_url': url}
-            info.update(extra_fields)
+            info |= extra_fields
         if self._is_audio_file(filename):
             extra_fields = {'audio_url': url}
-            info.update(extra_fields)
+            info |= extra_fields
         if self._is_pdf_file(filename):
             extra_fields = {'pdf_url': url}
-            info.update(extra_fields)
+            info |= extra_fields
         return {'info': info}
 
     def _is_image_file(self, filename):

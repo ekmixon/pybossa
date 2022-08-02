@@ -61,15 +61,11 @@ class ErrorStatus(object):
         exception_cls = e.__class__.__name__
         if exception_cls == 'JSONDecodeError':
             exception_cls = 'ValueError'
-        if self.error_status.get(exception_cls):
-            status = self.error_status.get(exception_cls)
-        else:  # pragma: no cover
-            status = 500
-        if exception_cls in ('BadRequest', 'Forbidden', 'Unauthorized'):
-            if message is None:
+        status = self.error_status.get(exception_cls) or 500
+        if message is None:
+            if exception_cls in ('BadRequest', 'Forbidden', 'Unauthorized'):
                 message = e.description
-        else:
-            if message is None:
+            else:
                 message = str(e)
         error = dict(action=action.upper(),
                      status="failed",

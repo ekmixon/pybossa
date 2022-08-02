@@ -90,12 +90,10 @@ class TestLockedSched(sched.Helper):
         task1 = TaskFactory.create(project=project, info='task 1', n_answers=1)
         task2 = TaskFactory.create(project=project, info='task 2', n_answers=1)
 
-        res = self.app.get('api/project/{}/newtask?api_key={}'
-                           .format(project.id, user.api_key))
+        res = self.app.get(f'api/project/{project.id}/newtask?api_key={user.api_key}')
         rec_task1 = json.loads(res.data)
 
-        res = self.app.get('api/project/{}/newtask?api_key={}'
-                           .format(project.id, owner.api_key))
+        res = self.app.get(f'api/project/{project.id}/newtask?api_key={owner.api_key}')
         rec_task2 = json.loads(res.data)
 
         # users get different tasks
@@ -111,19 +109,22 @@ class TestLockedSched(sched.Helper):
             'task_id': task1.id,
             'info': 'hello'
         }
-        res = self.app.post('api/taskrun?api_key={}'.format(owner.api_key),
-                            data=json.dumps(tr))
+        res = self.app.post(
+            f'api/taskrun?api_key={owner.api_key}', data=json.dumps(tr)
+        )
+
         assert res.status_code == 403, res.status_code
 
         # submit answer for the right task
         tr['task_id'] = task2.id
-        res = self.app.post('api/taskrun?api_key={}'.format(owner.api_key),
-                            data=json.dumps(tr))
+        res = self.app.post(
+            f'api/taskrun?api_key={owner.api_key}', data=json.dumps(tr)
+        )
+
         assert res.status_code == 200, res.status_code
 
         tr['task_id'] = task1.id
-        res = self.app.post('api/taskrun?api_key={}'.format(user.api_key),
-                            data=json.dumps(tr))
+        res = self.app.post(f'api/taskrun?api_key={user.api_key}', data=json.dumps(tr))
         assert res.status_code == 200, res.status_code
 
     @with_context
@@ -137,11 +138,10 @@ class TestLockedSched(sched.Helper):
         task1 = TaskFactory.create(project=project, info='task 1', n_answers=1)
         task2 = TaskFactory.create(project=project, info='task 2', n_answers=1)
 
-        res = self.app.get('api/project/{}/newtask'.format(project.id))
+        res = self.app.get(f'api/project/{project.id}/newtask')
         rec_task1 = json.loads(res.data)
 
-        res = self.app.get('api/project/{}/newtask?api_key={}'
-                           .format(project.id, owner.api_key))
+        res = self.app.get(f'api/project/{project.id}/newtask?api_key={owner.api_key}')
         rec_task2 = json.loads(res.data)
 
         # users get different tasks
@@ -170,12 +170,16 @@ class TestLockedSched(sched.Helper):
 
         headers = self.get_headers_jwt(project)
 
-        res = self.app.get('api/project/{}/newtask?external_uid={}'
-                           .format(project.id, '1xa'), headers=headers)
+        res = self.app.get(
+            f'api/project/{project.id}/newtask?external_uid=1xa', headers=headers
+        )
+
         rec_task1 = json.loads(res.data)
 
-        res = self.app.get('api/project/{}/newtask?external_uid={}'
-                           .format(project.id, '2xa'), headers=headers)
+        res = self.app.get(
+            f'api/project/{project.id}/newtask?external_uid=2xa', headers=headers
+        )
+
         rec_task2 = json.loads(res.data)
 
         # users get different tasks
@@ -204,11 +208,10 @@ class TestLockedSched(sched.Helper):
 
         task1 = TaskFactory.create(project=project, info='task 1', n_answers=1)
 
-        res = self.app.get('api/project/{}/newtask'.format(project.id))
+        res = self.app.get(f'api/project/{project.id}/newtask')
         rec_task1 = json.loads(res.data)
 
-        res = self.app.get('api/project/{}/newtask?api_key={}'
-                           .format(project.id, owner.api_key))
+        res = self.app.get(f'api/project/{project.id}/newtask?api_key={owner.api_key}')
         rec_task2 = json.loads(res.data)
         assert not rec_task2
 
@@ -223,12 +226,11 @@ class TestLockedSched(sched.Helper):
         task1 = TaskFactory.create(project=project, info='task 1', n_answers=2)
         task1 = TaskFactory.create(project=project, info='task 2', n_answers=2)
 
-        res = self.app.get('api/project/{}/newtask?api_key={}'
-                           .format(project.id, owner.api_key))
+        res = self.app.get(f'api/project/{project.id}/newtask?api_key={owner.api_key}')
         # fake expired user lock
         acquire_lock(task1.id, 1000, 2, -10)
 
-        res = self.app.get('api/project/{}/newtask'.format(project.id))
+        res = self.app.get(f'api/project/{project.id}/newtask')
         rec_task1 = json.loads(res.data)
 
         assert rec_task1['info'] == 'task 1'
@@ -244,8 +246,10 @@ class TestLockedSched(sched.Helper):
         task1 = TaskFactory.create(project=project, info='task 1', n_answers=2)
         task1 = TaskFactory.create(project=project, info='task 2', n_answers=2)
 
-        res = self.app.get('api/project/{}/newtask?api_key={}&offset=3'
-                           .format(project.id, owner.api_key))
+        res = self.app.get(
+            f'api/project/{project.id}/newtask?api_key={owner.api_key}&offset=3'
+        )
+
 
         assert res.status_code == 400, res.data
 

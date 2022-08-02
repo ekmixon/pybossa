@@ -60,10 +60,12 @@ class Repository(object):
 
     def generate_query_from_keywords(self, model, fulltextsearch=None,
                                      **kwargs):
-        clauses = [_entity_descriptor(model, key) == value
-                       for key, value in list(kwargs.items())
-                       if (key != 'info' and key != 'fav_user_ids'
-                            and key != 'created' and key != 'project_id')]
+        clauses = [
+            _entity_descriptor(model, key) == value
+            for key, value in list(kwargs.items())
+            if key not in ['info', 'fav_user_ids', 'created', 'project_id']
+        ]
+
         queries = []
         headlines = []
         order_by_ranks = []
@@ -72,7 +74,7 @@ class Repository(object):
         if 'info' in list(kwargs.keys()):
             queries, headlines, order_by_ranks = self.handle_info_json(model, kwargs['info'],
                                                                        fulltextsearch)
-            clauses = clauses + queries
+            clauses += queries
 
         if 'created' in list(kwargs.keys()):
             like_query = kwargs['created'] + '%'
@@ -80,11 +82,13 @@ class Repository(object):
                 _entity_descriptor(model, 'created').like(like_query))
 
         if 'project_id' in list(kwargs.keys()):
-            tmp = "%s" % kwargs['project_id']
+            tmp = f"{kwargs['project_id']}"
             project_ids = re.findall(r'\d+', tmp)
-            for project_id in project_ids:
-                or_clauses.append((_entity_descriptor(model, 'project_id') ==
-                                   project_id))
+            or_clauses.extend(
+                _entity_descriptor(model, 'project_id') == project_id
+                for project_id in project_ids
+            )
+
         all_clauses = and_(and_(*clauses), or_(*or_clauses))
         return (all_clauses,), queries, headlines, order_by_ranks
 
@@ -103,7 +107,7 @@ class Repository(object):
                         vector = _entity_descriptor(model, 'info')[k].astext
                         clause = func.to_tsvector(vector).match(v)
                         clauses.append(clause)
-                        if len(headlines) == 0:
+                        if not headlines:
                             headline = func.ts_headline(
                                 self.language,
                                 vector,
@@ -119,10 +123,10 @@ class Repository(object):
         else:
             if type(info) == dict:
                 clauses.append(_entity_descriptor(model, 'info') == info)
-            if type(info) == str or type(info) == str:
+            if type(info) == str:
                 try:
                     info = json.loads(info)
-                    if type(info) == int or type(info) == float:
+                    if type(info) in [int, float]:
                         info = '"%s"' % info
                 except ValueError:
                     info = '"%s"' % info
@@ -154,15 +158,15 @@ class Repository(object):
 
         if model not in [Announcement, ProjectStats] and owner_id:
             subquery = self.db.session.query(Project)\
-                           .with_entities(Project.id)\
-                           .filter_by(owner_id=owner_id).subquery()
+                               .with_entities(Project.id)\
+                               .filter_by(owner_id=owner_id).subquery()
             if (model != Project):
                 query = self.db.session.query(model)\
-                            .filter(model.project_id.in_(subquery),
+                                .filter(model.project_id.in_(subquery),
                                     *query_args)
             else:
                 query = self.db.session.query(model)\
-                            .filter(model.id.in_(subquery),
+                                .filter(model.id.in_(subquery),
                                     *query_args)
         else:
             query = self.db.session.query(model).filter(*query_args)
@@ -170,19 +174,19 @@ class Repository(object):
         if participated and model == Task:
             if participated['user_id']:
                 subquery = self.db.session.query(TaskRun)\
-                               .with_entities(TaskRun.task_id)\
-                               .filter_by(
+                                   .with_entities(TaskRun.task_id)\
+                                   .filter_by(
                                    user_id=participated['user_id']).subquery()
             if participated['external_uid']:
                 subquery = self.db.session.query(TaskRun)\
-                               .with_entities(TaskRun.task_id)\
-                               .filter_by(external_uid=participated['external_uid']).subquery()
+                                   .with_entities(TaskRun.task_id)\
+                                   .filter_by(external_uid=participated['external_uid']).subquery()
             if participated['user_ip']:
                 subquery = self.db.session.query(TaskRun)\
-                               .with_entities(TaskRun.task_id)\
-                               .filter_by(user_ip=participated['user_ip']).subquery()
+                                   .with_entities(TaskRun.task_id)\
+                                   .filter_by(user_ip=participated['user_ip']).subquery()
             query = self.db.session.query(model)\
-                        .filter(~model.id.in_(subquery),
+                            .filter(~model.id.in_(subquery),
                                 *query_args)
         if len(headlines) > 0:
             query = query.add_column(headlines[0])
@@ -198,28 +202,24 @@ class Repository(object):
             n_favs = func.coalesce(func.array_length(model.fav_user_ids, 1), 0).label('n_favs')
             query = query.add_column(n_favs)
         if orderby in ['created', 'updated', 'finish_time']:
-            if descending:
-                query = query.order_by(desc(
-                                            cast(getattr(model,
-                                                         orderby),
-                                                 TIMESTAMP)))
-            else:
-                query = query.order_by(cast(getattr(model, orderby), TIMESTAMP))
+            query = (
+                query.order_by(desc(cast(getattr(model, orderby), TIMESTAMP)))
+                if descending
+                else query.order_by(cast(getattr(model, orderby), TIMESTAMP))
+            )
+
+        elif orderby != 'fav_user_ids':
+            query = (
+                query.order_by(desc(getattr(model, orderby)))
+                if descending
+                else query.order_by(getattr(model, orderby))
+            )
+
+        elif descending:
+            query = query.order_by(desc(text("n_favs")))
         else:
-            if orderby != 'fav_user_ids':
-                if descending:
-                    query = query.order_by(desc(getattr(model, orderby)))
-                else:
-                    query = query.order_by(getattr(model, orderby))
-            else:
-                if descending:
-                    query = query.order_by(desc(text("n_favs")))
-                else:
-                    query = query.order_by(text("n_favs"))
-        if last_id:
-            query = query.limit(limit)
-        else:
-            query = query.limit(limit).offset(offset)
+            query = query.order_by(text("n_favs"))
+        query = query.limit(limit) if last_id else query.limit(limit).offset(offset)
         return query
 
     def _filter_by(self, model, limit=None, offset=0, yielded=False,
@@ -229,11 +229,8 @@ class Repository(object):
         query = self.create_context(filters, fulltextsearch, model)
         if last_id:
             query = query.filter(model.id > last_id)
-            query = self._set_orderby_desc(query, model, limit,
-                                           last_id, offset, desc, orderby)
-        else:
-            query = self._set_orderby_desc(query, model, limit,
-                                           last_id, offset, desc, orderby)
+        query = self._set_orderby_desc(query, model, limit,
+                                       last_id, offset, desc, orderby)
         if yielded:
             limit = limit or 1
             return query.yield_per(limit)

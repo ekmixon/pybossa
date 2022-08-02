@@ -33,10 +33,14 @@ def db_create():
         # version table, "stamping" it with the most recent rev:
         setup_alembic_config()
         # finally, add a minimum set of categories: Volunteer Thinking, Volunteer Sensing, Published and Draft
-        categories = []
-        categories.append(Category(name="Thinking",
-                                   short_name='thinking',
-                                   description='Volunteer Thinking projects'))
+        categories = [
+            Category(
+                name="Thinking",
+                short_name='thinking',
+                description='Volunteer Thinking projects',
+            )
+        ]
+
         categories.append(Category(name="Volunteer Sensing",
                                    short_name='sensing',
                                    description='Volunteer Sensing projects'))
@@ -97,7 +101,7 @@ def get_thumbnail_urls():
                 thumbnail = project.info.get('thumbnail')
                 container = project.info.get('container')
                 if (thumbnail and container):
-                    print("Updating project: %s" % project.short_name)
+                    print(f"Updating project: {project.short_name}")
                     thumbnail_url = get_avatar_url(upload_method, thumbnail,
                                                    container,
                                                    app.config.get('AVATAR_ABSOLUTE',
@@ -122,7 +126,7 @@ def get_avatars_url():
                 avatar = user.info.get('avatar')
                 container = user.info.get('container')
                 if (avatar and container):
-                    print("Updating user: %s" % user.name)
+                    print(f"Updating user: {user.name}")
                     avatar_url = get_avatar_url(upload_method, avatar,
                                                 container,
                                                 app.config.get('AVATAR_ABSOLUTE'))
@@ -183,26 +187,27 @@ def delete_hard_bounces():
     with app.app_context():
         with open('email.csv', 'r') as f:
             emails = f.readlines()
-            print("Number of users: %s" % len(emails))
+            print(f"Number of users: {len(emails)}")
             for email in emails:
-                usr = db.session.query(User).filter_by(
-                    email_addr=email.rstrip()).first()
-                if usr and len(usr.projects) == 0 and len(usr.task_runs) == 0:
-                    print("Deleting user: %s" % usr.email_addr)
-                    del_users += 1
-                    db.session.delete(usr)
-                    db.session.commit()
-                else:
-                    if usr:
+                if (
+                    usr := db.session.query(User)
+                    .filter_by(email_addr=email.rstrip())
+                    .first()
+                ):
+                    if len(usr.projects) == 0 and len(usr.task_runs) == 0:
+                        print(f"Deleting user: {usr.email_addr}")
+                        del_users += 1
+                        db.session.delete(usr)
+                    else:
                         if len(usr.projects) > 0:
-                            print("Invalid email (user owns app): %s" % usr.email_addr)
+                            print(f"Invalid email (user owns app): {usr.email_addr}")
                         if len(usr.task_runs) > 0:
-                            print("Invalid email (user has contributed): %s" % usr.email_addr)
+                            print(f"Invalid email (user has contributed): {usr.email_addr}")
                         fake_emails += 1
                         usr.valid_email = False
-                        db.session.commit()
-        print("%s users were deleted" % del_users)
-        print("%s users have fake emails" % fake_emails)
+                    db.session.commit()
+        print(f"{del_users} users were deleted")
+        print(f"{fake_emails} users have fake emails")
 
 
 def bootstrap_avatars():
@@ -228,10 +233,10 @@ def bootstrap_avatars():
     with app.app_context():
         if app.config['UPLOAD_METHOD'] == 'local':
             users = User.query.order_by('id').all()
-            print("Downloading avatars for %s users" % len(users))
+            print(f"Downloading avatars for {len(users)} users")
             for u in users:
-                print("Downloading avatar for %s ..." % u.name)
-                container = "user_%s" % u.id
+                print(f"Downloading avatar for {u.name} ...")
+                container = f"user_{u.id}"
                 path = os.path.join(app.config.get('UPLOAD_FOLDER'), container)
                 try:
                     print(get_gravatar_url(u.email_addr, 100))
@@ -241,7 +246,7 @@ def bootstrap_avatars():
                         if not os.path.isdir(path):
                             os.makedirs(path)
                         prefix = time.time()
-                        filename = "%s_avatar.png" % prefix
+                        filename = f"{prefix}_avatar.png"
                         with open(os.path.join(path, filename), 'wb') as f:
                             for chunk in r.iter_content(1024):
                                 f.write(chunk)
@@ -253,17 +258,15 @@ def bootstrap_avatars():
                         print("No Gravatar, this user will use the placeholder.")
                 except:
                     raise
-                    print("No gravatar, this user will use the placehoder.")
-
             apps = Project.query.all()
-            print("Downloading avatars for %s projects" % len(apps))
+            print(f"Downloading avatars for {len(apps)} projects")
             for a in apps:
                 if a.info.get('thumbnail') and not a.info.get('container'):
-                    print("Working on project: %s ..." % a.short_name)
-                    print("Saving avatar: %s ..." % a.info.get('thumbnail'))
+                    print(f"Working on project: {a.short_name} ...")
+                    print(f"Saving avatar: {a.info.get('thumbnail')} ...")
                     url = urlparse(a.info.get('thumbnail'))
                     if url.scheme and url.netloc:
-                        container = "user_%s" % a.owner_id
+                        container = f"user_{a.owner_id}"
                         path = os.path.join(app.config.get(
                             'UPLOAD_FOLDER'), container)
                         try:
@@ -294,22 +297,22 @@ def bootstrap_avatars():
 
             cf = pyrax.cloudfiles
             users = User.query.all()
-            print("Downloading avatars for %s users" % len(users))
+            print(f"Downloading avatars for {len(users)} users")
             dirpath = tempfile.mkdtemp()
             for u in users:
                 try:
                     r = requests.get(get_gravatar_url(
                         u.email_addr, 100), stream=True)
                     if r.status_code == 200:
-                        print("Downloading avatar for %s ..." % u.name)
-                        container = "user_%s" % u.id
+                        print(f"Downloading avatar for {u.name} ...")
+                        container = f"user_{u.id}"
                         try:
                             cf.get_container(container)
                         except pyrax.exceptions.NoSuchContainer:
                             cf.create_container(container)
                             cf.make_container_public(container)
                         prefix = time.time()
-                        filename = "%s_avatar.png" % prefix
+                        filename = f"{prefix}_avatar.png"
                         with open(os.path.join(dirpath, filename), 'wb') as f:
                             for chunk in r.iter_content(1024):
                                 f.write(chunk)
@@ -329,14 +332,14 @@ def bootstrap_avatars():
                     print("No gravatar, this user will use the placehoder.")
 
             apps = Project.query.all()
-            print("Downloading avatars for %s projects" % len(apps))
+            print(f"Downloading avatars for {len(apps)} projects")
             for a in apps:
                 if a.info.get('thumbnail') and not a.info.get('container'):
-                    print("Working on project: %s ..." % a.short_name)
-                    print("Saving avatar: %s ..." % a.info.get('thumbnail'))
+                    print(f"Working on project: {a.short_name} ...")
+                    print(f"Saving avatar: {a.info.get('thumbnail')} ...")
                     url = urlparse(a.info.get('thumbnail'))
                     if url.scheme and url.netloc:
-                        container = "user_%s" % a.owner_id
+                        container = f"user_{a.owner_id}"
                         try:
                             cf.get_container(container)
                         except pyrax.exceptions.NoSuchContainer:
@@ -369,94 +372,89 @@ def bootstrap_avatars():
 
 def resize_avatars():
     """Resize avatars to 512px."""
-    if app.config['UPLOAD_METHOD'] == 'rackspace':
-        import pyrax
-        import tempfile
-        import requests
-        from PIL import Image
-        import time
-        pyrax.set_setting("identity_type", "rackspace")
-        pyrax.set_credentials(username=app.config['RACKSPACE_USERNAME'],
-                              api_key=app.config['RACKSPACE_API_KEY'],
-                              region=app.config['RACKSPACE_REGION'])
+    if app.config['UPLOAD_METHOD'] != 'rackspace':
+        return
+    import pyrax
+    import tempfile
+    import requests
+    from PIL import Image
+    import time
+    pyrax.set_setting("identity_type", "rackspace")
+    pyrax.set_credentials(username=app.config['RACKSPACE_USERNAME'],
+                          api_key=app.config['RACKSPACE_API_KEY'],
+                          region=app.config['RACKSPACE_REGION'])
 
-        cf = pyrax.cloudfiles
-        user_id_updated_avatars = []
-        if os.path.isfile('user_id_updated_avatars.txt'):
-            t = open('user_id_updated_avatars.txt', 'r')
+    cf = pyrax.cloudfiles
+    user_id_updated_avatars = []
+    if os.path.isfile('user_id_updated_avatars.txt'):
+        with open('user_id_updated_avatars.txt', 'r') as t:
             user_id_updated_avatars = t.readlines()
-            t.close()
-        users = User.query.filter(~User.id.in_(user_id_updated_avatars)).all()
-        print("Downloading avatars for %s users" % len(users))
-        dirpath = tempfile.mkdtemp()
-        f = open('user_id_updated_avatars.txt', 'a')
-        for u in users:
-            try:
-                if u.info.get('container'):
-                    cont = cf.get_container(u.info['container'])
-                    if cont.cdn_ssl_uri:
-                        avatar_url = "%s/%s" % (cont.cdn_ssl_uri,
-                                                u.info['avatar'])
-                    else:
-                        cont.make_public()
-                        avatar_url = "%s/%s" % (cont.cdn_ssl_uri,
-                                                u.info['avatar'])
-                    r = requests.get(avatar_url, stream=True)
-                    if r.status_code == 200:
-                        print("Downloading avatar for %s ..." % u.name)
-                        #container = "user_%s" % u.id
-                        # try:
-                        #    cf.get_container(container)
-                        # except pyrax.exceptions.NoSuchContainer:
-                        #    cf.create_container(container)
-                        #    cf.make_container_public(container)
-                        prefix = time.time()
-                        filename = "%s_avatar.png" % prefix
-                        with open(os.path.join(dirpath, filename), 'wb') as f:
-                            for chunk in r.iter_content(1024):
-                                f.write(chunk)
-                        # Resize image
-                        im = Image.open(os.path.join(dirpath, filename))
-                        size = 512, 512
-                        tmp = im.resize(size, Image.ANTIALIAS)
-                        scale_down_img = tmp.convert(
-                            'P', colors=255, palette=Image.ADAPTIVE)
-                        scale_down_img.save(os.path.join(
-                            dirpath, filename), format='png')
+    users = User.query.filter(~User.id.in_(user_id_updated_avatars)).all()
+    print(f"Downloading avatars for {len(users)} users")
+    dirpath = tempfile.mkdtemp()
+    f = open('user_id_updated_avatars.txt', 'a')
+    for u in users:
+        try:
+            if u.info.get('container'):
+                cont = cf.get_container(u.info['container'])
+                if not cont.cdn_ssl_uri:
+                    cont.make_public()
+                avatar_url = f"{cont.cdn_ssl_uri}/{u.info['avatar']}"
+                r = requests.get(avatar_url, stream=True)
+                if r.status_code == 200:
+                    print(f"Downloading avatar for {u.name} ...")
+                    #container = "user_%s" % u.id
+                    # try:
+                    #    cf.get_container(container)
+                    # except pyrax.exceptions.NoSuchContainer:
+                    #    cf.create_container(container)
+                    #    cf.make_container_public(container)
+                    prefix = time.time()
+                    filename = f"{prefix}_avatar.png"
+                    with open(os.path.join(dirpath, filename), 'wb') as f:
+                        for chunk in r.iter_content(1024):
+                            f.write(chunk)
+                    # Resize image
+                    im = Image.open(os.path.join(dirpath, filename))
+                    size = 512, 512
+                    tmp = im.resize(size, Image.ANTIALIAS)
+                    scale_down_img = tmp.convert(
+                        'P', colors=255, palette=Image.ADAPTIVE)
+                    scale_down_img.save(os.path.join(
+                        dirpath, filename), format='png')
 
-                        print("New scaled down image created!")
-                        print("%s" % (os.path.join(dirpath, filename)))
-                        print("---")
+                    print("New scaled down image created!")
+                    print(f"{os.path.join(dirpath, filename)}")
+                    print("---")
 
-                        chksum = pyrax.utils.get_checksum(os.path.join(dirpath,
-                                                                       filename))
-                        cf.upload_file(cont,
-                                       os.path.join(dirpath, filename),
-                                       obj_name=filename,
-                                       etag=chksum)
-                        old_avatar = u.info['avatar']
-                        # Update new values
-                        u.info['avatar'] = filename
-                        u.info['container'] = "user_%s" % u.id
-                        db.session.commit()
-                        # Save the user.id to avoid downloading it again.
-                        f = open('user_id_updated_avatars.txt', 'a')
-                        f.write("%s\n" % u.id)
-                        # delete old avatar
-                        obj = cont.get_object(old_avatar)
-                        obj.delete()
-                        print("Done!")
-                    else:
-                        print("No Avatar found.")
-                else:
+                    chksum = pyrax.utils.get_checksum(os.path.join(dirpath,
+                                                                   filename))
+                    cf.upload_file(cont,
+                                   os.path.join(dirpath, filename),
+                                   obj_name=filename,
+                                   etag=chksum)
+                    old_avatar = u.info['avatar']
+                    # Update new values
+                    u.info['avatar'] = filename
+                    u.info['container'] = f"user_{u.id}"
+                    db.session.commit()
+                    # Save the user.id to avoid downloading it again.
+                    f = open('user_id_updated_avatars.txt', 'a')
                     f.write("%s\n" % u.id)
-                    print("No avatar found")
-            except pyrax.exceptions.NoSuchObject:
-                print("Previous avatar not found, so not deleting it.")
-            except:
-                raise
-                print("No Avatar, this user will use the placehoder.")
-        f.close()
+                    # delete old avatar
+                    obj = cont.get_object(old_avatar)
+                    obj.delete()
+                    print("Done!")
+                else:
+                    print("No Avatar found.")
+            else:
+                f.write("%s\n" % u.id)
+                print("No avatar found")
+        except pyrax.exceptions.NoSuchObject:
+            print("Previous avatar not found, so not deleting it.")
+        except:
+            raise
+    f.close()
 
 
 def resize_project_avatars():

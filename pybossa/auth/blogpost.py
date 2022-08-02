@@ -40,15 +40,16 @@ class BlogpostAuth(object):
         return blogpost.user_id == project.owner_id == user.id or user.admin
 
     def _read(self, user, blogpost=None, project_id=None):
-        if blogpost or project_id:
-            project = self._get_project(blogpost, project_id)
-            if project:
-                return (project.published or self._is_admin_or_owner(user, project))
-            if user.is_anonymous or (blogpost is None and project_id is None):
-                return False
-            return self._is_admin_or_owner(user, project)
-        else:
+        if not blogpost and not project_id:
             return True
+        if project := self._get_project(blogpost, project_id):
+            return (project.published or self._is_admin_or_owner(user, project))
+        else:
+            return (
+                False
+                if user.is_anonymous or (blogpost is None and project_id is None)
+                else self._is_admin_or_owner(user, project)
+            )
 
     def _update(self, user, blogpost, project_id=None):
         if user.is_anonymous:

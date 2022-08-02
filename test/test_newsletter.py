@@ -80,14 +80,14 @@ class TestNewsletterClass(Test):
     def test_subscribe_user(self, mailchimp):
         """Test subscribe user works."""
         with patch.dict(self.flask_app.config, {'MAILCHIMP_API_KEY': 'k-3',
-                                                'MAILCHIMP_LIST_ID': 1}):
+                                                    'MAILCHIMP_LIST_ID': 1}):
             user = UserFactory.create()
             nw = Newsletter()
             nw.init_app(self.flask_app)
 
             nw.subscribe_user(user)
 
-            url = "%s/lists/1/members/" % (nw.root)
+            url = f"{nw.root}/lists/1/members/"
             data = dict(email_address=user.email_addr,
                         status='pending',
                         merge_fields=dict(FNAME=user.fullname))
@@ -101,7 +101,7 @@ class TestNewsletterClass(Test):
     def test_subscribe_user_update_existing(self, mailchimp):
         """Test subscribe user update existing works."""
         with patch.dict(self.flask_app.config, {'MAILCHIMP_API_KEY': 'k-3',
-                                                'MAILCHIMP_LIST_ID': 1}):
+                                                    'MAILCHIMP_LIST_ID': 1}):
             user = UserFactory.create()
             nw = Newsletter()
             nw.init_app(self.flask_app)
@@ -110,8 +110,7 @@ class TestNewsletterClass(Test):
 
             email = {'email': user.email_addr}
             merge_vars = {'FNAME': user.fullname}
-            url = "%s/lists/1/members/%s" % (nw.root,
-                                             nw.get_email_hash(user.email_addr))
+            url = f"{nw.root}/lists/1/members/{nw.get_email_hash(user.email_addr)}"
             data = dict(email_address=user.email_addr,
                         status='pending',
                         merge_fields=dict(FNAME=user.fullname),
@@ -127,7 +126,7 @@ class TestNewsletterClass(Test):
     def test_delete_user(self, mailchimp):
         """Test delete user from mailchimp."""
         with patch.dict(self.flask_app.config, {'MAILCHIMP_API_KEY': 'k-3',
-                                                'MAILCHIMP_LIST_ID': 1}):
+                                                    'MAILCHIMP_LIST_ID': 1}):
             nw = Newsletter()
             nw.init_app(self.flask_app)
 
@@ -137,8 +136,7 @@ class TestNewsletterClass(Test):
 
             res = nw.delete_user('email')
 
-            url = "%s/lists/1/members/%s" % (nw.root,
-                                             nw.get_email_hash('email'))
+            url = f"{nw.root}/lists/1/members/{nw.get_email_hash('email')}"
             mailchimp.assert_called_with(url, auth=nw.auth)
             assert res is True, res
 
@@ -147,7 +145,7 @@ class TestNewsletterClass(Test):
     def test_delete_user_returns_false(self, mailchimp):
         """Test delete user from mailchimp returns false."""
         with patch.dict(self.flask_app.config, {'MAILCHIMP_API_KEY': 'k-3',
-                                                'MAILCHIMP_LIST_ID': 1}):
+                                                    'MAILCHIMP_LIST_ID': 1}):
             nw = Newsletter()
             nw.init_app(self.flask_app)
 
@@ -157,8 +155,7 @@ class TestNewsletterClass(Test):
 
             res = nw.delete_user('email')
 
-            url = "%s/lists/1/members/%s" % (nw.root,
-                                             nw.get_email_hash('email'))
+            url = f"{nw.root}/lists/1/members/{nw.get_email_hash('email')}"
             mailchimp.assert_called_with(url, auth=nw.auth)
             assert res is False, res
 
@@ -298,7 +295,7 @@ class TestNewsletterViewFunctions(web.Helper):
         newsletter.ask_user_to_subscribe.return_value = True
         self.register()
         next_url = '%2Faccount%2Fjohndoe%2Fupdate'
-        url ='/account/newsletter?subscribe=True&next=%s' % next_url
+        url = f'/account/newsletter?subscribe=True&next={next_url}'
         res = self.app.get(url, follow_redirects=True)
         err_msg = "User should be subscribed"
         user = user_repo.get(1)
@@ -328,7 +325,7 @@ class TestNewsletterViewFunctions(web.Helper):
         newsletter.ask_user_to_subscribe.return_value = True
         self.register()
         next_url = '%2Faccount%2Fjohndoe%2Fupdate'
-        url ='/account/newsletter?subscribe=False&next=%s' % next_url
+        url = f'/account/newsletter?subscribe=False&next={next_url}'
         res = self.app.get(url, follow_redirects=True)
         err_msg = "User should not be subscribed"
         assert "You are subscribed" not in str(res.data), err_msg

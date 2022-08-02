@@ -72,10 +72,7 @@ class Uploader(object):
             from io import BytesIO
             m = BytesIO()
             im = Image.open(file)
-            if coordinates != (0, 0, 0, 0):
-                target = im.crop(coordinates)
-            else:
-                target = im
+            target = im.crop(coordinates) if coordinates != (0, 0, 0, 0) else im
             target.save(m, format=extension)
             file.stream = m
             file.stream.seek(0)

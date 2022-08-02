@@ -45,11 +45,11 @@ class Page(db.Model, DomainObject):
     media_url = Column(Text)
 
     @classmethod
-    def public_attributes(self):
+    def public_attributes(cls):
         """Return a list of public attributes."""
         return ['created', 'id', 'info', 'media_url', 'slug']
 
     @classmethod
-    def public_info_keys(self):
+    def public_info_keys(cls):
         """Return a list of public info keys."""
         pass

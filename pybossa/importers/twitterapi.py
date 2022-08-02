@@ -41,7 +41,7 @@ class BulkTaskTwitterImport(BulkTaskImport):
         if self._tasks is None:
             statuses = self._get_statuses()
             tasks = [self._create_task_from_status(status) for status in statuses]
-            self._tasks = tasks[0:self.count]
+            self._tasks = tasks[:self.count]
         return self._tasks
 
     def count_tasks(self):
@@ -123,7 +123,7 @@ class UserCredentialsClient(TwitterClient):
         while len(results) < count and len(partial_results) > 0:
             results += partial_results
             remaining = count - len(results)
-            max_id = min([status['id'] for status in partial_results]) - 1
+            max_id = min(status['id'] for status in partial_results) - 1
             partial_results = self._fetch_statuses(
                                   q=source,
                                   count=remaining,
@@ -140,5 +140,4 @@ class AppCredentialsClient(TwitterClient):
         self.api = Twitter(auth=auth)
 
     def fetch_all_statuses(self, source, count, since_id):
-        results = self._fetch_statuses(q=source, count=count)
-        return results
+        return self._fetch_statuses(q=source, count=count)

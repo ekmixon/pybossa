@@ -105,16 +105,15 @@ def has_no_presenter(project):
     """Return if a project has no presenter."""
     if current_app.config.get('DISABLE_TASK_PRESENTER'):
         return False
-    else:
-        empty_presenters = ('', None)
+    empty_presenters = ('', None)
+    try:
+        return not project.has_presenter()
+    except AttributeError:
         try:
-            return not project.has_presenter()
+            return (project.get('info').get('task_presenter') in
+                    empty_presenters)
         except AttributeError:
-            try:
-                return (project.get('info').get('task_presenter') in
-                        empty_presenters)
-            except AttributeError:
-                return True
+            return True
 
 
 def _has_no_tasks(project_id):

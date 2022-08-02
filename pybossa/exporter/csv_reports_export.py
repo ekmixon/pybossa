@@ -43,17 +43,17 @@ class ProjectReportCsvExporter(CsvExporter):
         filename = self.download_name(project, ty)
         self.delete_existing_zip(project, ty)
         self._make_zip(project, ty)
-        if isinstance(uploader, local.LocalUploader):
-            filepath = self._download_path(project)
-            res = send_file(filename_or_fp=safe_join(filepath, filename),
-                            mimetype='application/octet-stream',
-                            as_attachment=True,
-                            attachment_filename=filename)
-            return res
-        else:
+        if not isinstance(uploader, local.LocalUploader):
             return redirect(url_for('rackspace', filename=filename,
                                     container=self._container(project),
                                     _external=True))
+        filepath = self._download_path(project)
+        return send_file(
+            filename_or_fp=safe_join(filepath, filename),
+            mimetype='application/octet-stream',
+            as_attachment=True,
+            attachment_filename=filename,
+        )
 
     def response_zip(self, project, ty):
         return super(ProjectReportCsvExporter, self).response_zip(project, ty)
@@ -63,7 +63,7 @@ class ProjectReportCsvExporter(CsvExporter):
            This function does not check if this filename actually exists!"""
 
         name = self._project_name_latin_encoded(project)
-        filename = '%s_%s_%s_report.zip' % (str(project.id), name, ty)  # Example: 123_feynman_project_report_csv.zip
+        filename = f'{str(project.id)}_{name}_{ty}_report.zip'
         filename = secure_filename(filename)
         return filename
 
@@ -88,13 +88,14 @@ class ProjectReportCsvExporter(CsvExporter):
             user_header = ['Id', 'Name', 'Fullname', 'Total Tasks Completed',
                            'Percent Tasks Completed', 'First Task Submission',
                            'Last Task Submission', 'Average Time Per Task']
-            users_project_data = get_project_report_userdata(id)
-            users_csv = 'No user data\n'
-            if users_project_data:
-                users_csv = pd.DataFrame([users_project_data],
-                                         columns=user_header).to_csv(index=False)
-            csv_txt = 'Project Statistics\n{}\n{}'.format(project_csv, users_csv)
-            return csv_txt
+            if users_project_data := get_project_report_userdata(id):
+                users_csv = pd.DataFrame(
+                    [users_project_data], columns=user_header
+                ).to_csv(index=False)
+
+            else:
+                users_csv = 'No user data\n'
+            return f'Project Statistics\n{project_csv}\n{users_csv}'
 
     def _make_zip(self, project, ty):
         name = self._project_name_latin_encoded(project)
@@ -107,9 +108,7 @@ class ProjectReportCsvExporter(CsvExporter):
                 zipped_datafile = tempfile.NamedTemporaryFile()
                 try:
                     _zip = self._zip_factory(zipped_datafile.name)
-                    _zip.write(
-                        datafile.name,
-                        secure_filename('%s_%s.csv' % (name, ty)))
+                    _zip.write(datafile.name, secure_filename(f'{name}_{ty}.csv'))
                     _zip.close()
                     container = "user_%d" % project.owner_id
                     _file = FileStorage(

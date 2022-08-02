@@ -198,8 +198,8 @@ def stats_dates(project_id, period='15 day'):
     # No completed tasks in the last period
     def _fill_empty_days(days, obj):
         if len(days) < convert_period_to_days(period):
-            base = datetime.datetime.today()
-            for x in range(0, convert_period_to_days(period)):
+            base = datetime.datetime.now()
+            for x in range(convert_period_to_days(period)):
                 tmp_date = base - datetime.timedelta(days=x)
                 if tmp_date.strftime('%Y-%m-%d') not in days:
                     obj[tmp_date.strftime('%Y-%m-%d')] = 0
@@ -259,7 +259,7 @@ def stats_hours(project_id, period='2 week'):
     max_hours_auth = 0
 
     # initialize hours keys
-    for i in range(0, 24):
+    for i in range(24):
         hours[str(i).zfill(2)] = 0
         hours_anon[str(i).zfill(2)] = 0
         hours_auth[str(i).zfill(2)] = 0
@@ -489,12 +489,8 @@ def stats_format_users(project_id, users, anon_users, auth_users):
     for u in auth_users:
         userAuthStats['values'].append(dict(label=u[0], value=[u[1]]))
 
-    # Get location for Anonymous users
-    top5_anon = []
     top5_auth = []
-    for u in anon_users:
-        top5_anon.append(dict(ip=u[0], tasks=u[1]))
-
+    top5_anon = [dict(ip=u[0], tasks=u[1]) for u in anon_users]
     for u in auth_users:
         sql = text('''SELECT name, fullname, restrict from "user"
                    where id=:id and restrict=false;''')
@@ -512,7 +508,7 @@ def stats_format_users(project_id, users, anon_users, auth_users):
                                   tasks=u[1],
                                   restrict=restrict))
 
-    userAnonStats['top5'] = top5_anon[0:5]
+    userAnonStats['top5'] = top5_anon[:5]
     userAuthStats['top5'] = top5_auth
 
     return dict(users=userStats, anon=userAnonStats, auth=userAuthStats,

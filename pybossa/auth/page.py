@@ -35,33 +35,28 @@ class PageAuth(object):
         if user.is_anonymous or (page is None and project_id is None):
             return False
         project = self._get_project(page, project_id)
-        if page is None:
-            return self._is_admin_or_owner(user, project)
         return self._is_admin_or_owner(user, project)
 
     def _read(self, user, page=None, project_id=None):
-        if page or project_id:
-            project = self._get_project(page, project_id)
-            if project:
-                return (project.published or
-                        self._is_admin_or_owner(user, project))
-            if user.is_anonymous or (page is None and project_id is None):
-                return False
-            return self._is_admin_or_owner(user, project)
-        else:
+        if not page and not project_id:
             return True
+        if project := self._get_project(page, project_id):
+            return (project.published or
+                    self._is_admin_or_owner(user, project))
+        else:
+            return (
+                False
+                if user.is_anonymous or (page is None and project_id is None)
+                else self._is_admin_or_owner(user, project)
+            )
 
     def _update(self, user, page, project_id=None):
         project = self._get_project(page, project_id)
-        if user.is_anonymous:
-            return False
-        return self._is_admin_or_owner(user, project)
+        return False if user.is_anonymous else self._is_admin_or_owner(user, project)
 
     def _delete(self, user, page, project_id=None):
         project = self._get_project(page, project_id)
-        if user.is_anonymous:
-            return False
-        return self._is_admin_or_owner(user, project)
+        return False if user.is_anonymous else self._is_admin_or_owner(user, project)
 
     def _get_project(self, page, project_id):
         if page is not None:

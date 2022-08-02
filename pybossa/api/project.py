@@ -102,9 +102,10 @@ class ProjectAPI(APIBase):
         if current_user.is_anonymous:
             data = self._filter_private_data(data)
             return data
-        if (current_user.is_authenticated and
-                (current_user.id in data['owners_ids'] or current_user.admin)):
-            return data
-        else:
+        if (
+            not current_user.is_authenticated
+            or current_user.id not in data['owners_ids']
+            and not current_user.admin
+        ):
             data = self._filter_private_data(data)
-            return data
+        return data

@@ -49,19 +49,19 @@ class BulkTaskDropboxImport(BulkTaskImport):
             extra_fields = {'url_m': info['link_raw'],
                             'url_b': info['link_raw'],
                             'title': info['filename']}
-            info.update(extra_fields)
+            info |= extra_fields
         if self._is_video_file(_file['name']):
             url = self._create_raw_cors_link(_file['link'])
             extra_fields = {'video_url': url}
-            info.update(extra_fields)
+            info |= extra_fields
         if self._is_audio_file(_file['name']):
             url = self._create_raw_cors_link(_file['link'])
             extra_fields = {'audio_url': url}
-            info.update(extra_fields)
+            info |= extra_fields
         if self._is_pdf_file(_file['name']):
             url = self._create_raw_cors_link(_file['link'])
             extra_fields = {'pdf_url': url}
-            info.update(extra_fields)
+            info |= extra_fields
         return {'info': info}
 
     def _is_image_file(self, filename):

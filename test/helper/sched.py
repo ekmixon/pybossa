@@ -23,25 +23,20 @@ class Helper(web.Helper):
     """Class to help testing the scheduler"""
     def is_task(self, task_id, tasks):
         """Returns True if the task_id is in tasks list"""
-        for t in tasks:
-            if t.id == task_id:
-                return True
-        return False
+        return any(t.id == task_id for t in tasks)
 
     def is_unique(self, id, items):
         """Returns True if the id is not Unique"""
         copies = 0
         for i in items:
-            if type(i) is dict:
-                if i['id'] == id:
-                    copies = copies + 1
-            else:
-                if i.id == id:
-                    copies = copies + 1
-        if copies >= 2:
-            return False
-        else:
-            return True
+            if (
+                type(i) is dict
+                and i['id'] == id
+                or type(i) is not dict
+                and i.id == id
+            ):
+                copies = copies + 1
+        return copies < 2
 
     def del_task_runs(self, project_id=1):
         """Deletes all TaskRuns for a given project_id"""
@@ -56,7 +51,7 @@ class Helper(web.Helper):
     def get_headers_jwt(self, project):
         """Return headers JWT token."""
         # Get JWT token
-        url = 'api/auth/project/%s/token' % project.short_name
+        url = f'api/auth/project/{project.short_name}/token'
 
         res = self.app.get(url, headers={'Authorization': project.secret_key})
 

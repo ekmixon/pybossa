@@ -91,16 +91,16 @@ def sanitize_project_owner(project, owner, current_user, ps=None):
         owner_sanitized = cached_users.get_user_summary(owner.name)
     else:   # anonymous or different owner
         if request.headers.get('Content-Type') == 'application/json':
-            if isinstance(project, Project):
-                project_sanitized = project.to_public_json()            # Project object
-            else:
-                project_sanitized = Project().to_public_json(project)   # dict object
-        else:    # HTML
-            # Also dictize for HTML to have same output as authenticated user (see above)
-            if isinstance(project, Project):
-                project_sanitized = project.dictize()   # Project object
-            else:
-                project_sanitized = project             # dict object
+            project_sanitized = (
+                project.to_public_json()
+                if isinstance(project, Project)
+                else Project().to_public_json(project)
+            )
+
+        elif isinstance(project, Project):
+            project_sanitized = project.dictize()   # Project object
+        else:
+            project_sanitized = project             # dict object
         owner_sanitized = cached_users.public_get_user_summary(owner.name)
     if ps:
         project_sanitized['n_tasks'] = ps.n_tasks
@@ -129,13 +129,12 @@ def project_title(project, page_name):
     if not project:  # pragma: no cover
         return "Project not found"
     if page_name is None:
-        return "Project: %s" % (project.name)
-    return "Project: %s &middot; %s" % (project.name, page_name)
+        return f"Project: {project.name}"
+    return f"Project: {project.name} &middot; {page_name}"
 
 
 def project_by_shortname(short_name):
-    project = project_repo.get_by(short_name=short_name)
-    if project:
+    if project := project_repo.get_by(short_name=short_name):
         # Get owner
         ps = stats.get_stats(project.id, full=True)
         owner = user_repo.get(project.owner_id)
@@ -167,10 +166,9 @@ def index(page):
     if cached_projects.n_count('featured') > 0:
         return project_index(page, cached_projects.get_all_featured,
                              'featured', True, False, order_by, desc)
-    else:
-        categories = cached_cat.get_all()
-        cat_short_name = categories[0].short_name
-        return redirect_content_type(url_for('.project_cat_index', category=cat_short_name))
+    categories = cached_cat.get_all()
+    cat_short_name = categories[0].short_name
+    return redirect_content_type(url_for('.project_cat_index', category=cat_short_name))
 
 
 def project_index(page, lookup, category, fallback, use_count, order_by=None,
@@ -223,7 +221,7 @@ def project_index(page, lookup, category, fallback, use_count, order_by=None,
         "template": '/projects/index.html'}
 
     if use_count:
-        template_args.update({"count": count})
+        template_args["count"] = count
     return handle_content_type(template_args)
 
 
@@ -288,7 +286,7 @@ def new():
             text_desc = text_desc[:-3]
             text_desc += "..."
         description = blank_space_regex.sub(" ", text_desc)
-        return description if description else " "
+        return description or " "
 
     if request.method != 'POST':
         return respond(False)
@@ -375,7 +373,7 @@ def task_presenter_editor(short_name):
             msg = msg_1 + url + msg_3
             flash(Markup(msg), 'info')
 
-            wrap = lambda i: "projects/presenters/%s.html" % i
+            wrap = lambda i: f"projects/presenters/{i}.html"
             pres_tmpls = list(map(wrap, current_app.config.get('PRESENTERS')))
 
             project = add_custom_contrib_button_to(project, get_user_id_or_ip(), ps=ps)
@@ -397,8 +395,7 @@ def task_presenter_editor(short_name):
                             pro_features=pro)
             return handle_content_type(response)
 
-        tmpl_uri = "projects/snippets/%s.html" \
-            % request.args.get('template')
+        tmpl_uri = f"projects/snippets/{request.args.get('template')}.html"
         tmpl = render_template(tmpl_uri, project=project)
         form.editor.data = tmpl
         msg = 'Your code will be <em>automagically</em> rendered in \
@@ -528,7 +525,7 @@ def update(short_name):
                                upload_form.x2.data, upload_form.y2.data)
                 prefix = time.time()
                 _file.filename = "project_%s_thumbnail_%i.png" % (project.id, prefix)
-                container = "user_%s" % current_user.id
+                container = f"user_{current_user.id}"
                 uploader.upload_file(_file,
                                      container=container,
                                      coordinates=coordinates)
@@ -577,8 +574,7 @@ def details(short_name):
     project, owner, ps = project_by_shortname(short_name)
 
     if project.needs_password():
-        redirect_to_password = _check_if_redirect_to_password(project)
-        if redirect_to_password:
+        if redirect_to_password := _check_if_redirect_to_password(project):
             return redirect_to_password
     else:
         ensure_authorized_to('read', project)
@@ -673,29 +669,25 @@ def import_task(short_name):
                 return _import_tasks(project, **form.get_import_data())
             except BulkImportException as err_msg:
                 raise
-                flash(err_msg, 'error')
             except Exception as inst:  # pragma: no cover
                 raise
-                current_app.logger.error(inst)
-                msg = 'Oops! Looks like there was an error!'
-                flash(gettext(msg), 'error')
-        template_args['template'] = '/projects/importers/%s.html' % importer_type
+        template_args['template'] = f'/projects/importers/{importer_type}.html'
         return handle_content_type(template_args)
 
     if request.method == 'GET':
         template_tasks = current_app.config.get('TEMPLATE_TASKS')
         if importer_type is None:
-            template_wrap = lambda i: "projects/tasks/gdocs-%s.html" % i
+            template_wrap = lambda i: f"projects/tasks/gdocs-{i}.html"
             task_tmpls = list(map(template_wrap, template_tasks))
             template_args['task_tmpls'] = task_tmpls
-            importer_wrap = lambda i: "projects/tasks/%s.html" % i
+            importer_wrap = lambda i: f"projects/tasks/{i}.html"
             template_args['available_importers'] = list(map(importer_wrap, all_importers))
             template_args['template'] = '/projects/task_import_options.html'
             return handle_content_type(template_args)
         if importer_type == 'gdocs' and request.args.get('template'):  # pragma: no cover
             template = request.args.get('template')
             form.googledocs_url.data = template_tasks.get(template)
-        template_args['template'] = '/projects/importers/%s.html' % importer_type
+        template_args['template'] = f'/projects/importers/{importer_type}.html'
         return handle_content_type(template_args)
 
 
@@ -745,23 +737,22 @@ def setup_autoimporter(short_name):
         return render_template('/projects/task_autoimporter.html',
                                 importer=importer_info, **template_args)
 
-    if request.method == 'POST':
-        if form.validate():  # pragma: no cover
-            project.set_autoimporter(form.get_import_data())
-            project_repo.save(project)
-            auditlogger.log_event(project, current_user, 'create', 'autoimporter',
-                                  'Nothing', json.dumps(project.get_autoimporter()))
-            flash(gettext("Success! Tasks will be imported daily."))
-            return redirect(url_for('.setup_autoimporter', short_name=project.short_name))
+    if request.method == 'POST' and form.validate():
+        project.set_autoimporter(form.get_import_data())
+        project_repo.save(project)
+        auditlogger.log_event(project, current_user, 'create', 'autoimporter',
+                              'Nothing', json.dumps(project.get_autoimporter()))
+        flash(gettext("Success! Tasks will be imported daily."))
+        return redirect(url_for('.setup_autoimporter', short_name=project.short_name))
 
-    if request.method == 'GET':
-        if importer_type is None:
-            wrap = lambda i: "projects/tasks/%s.html" % i
-            template_args['available_importers'] = list(map(wrap, all_importers))
-            return render_template('projects/task_autoimport_options.html',
-                                   **template_args)
-    return render_template('/projects/importers/%s.html' % importer_type,
-                                **template_args)
+    if request.method == 'GET' and importer_type is None:
+        wrap = lambda i: f"projects/tasks/{i}.html"
+        template_args['available_importers'] = list(map(wrap, all_importers))
+        return render_template('projects/task_autoimport_options.html',
+                               **template_args)
+    return render_template(
+        f'/projects/importers/{importer_type}.html', **template_args
+    )
 
 
 @blueprint.route('/<short_name>/tasks/autoimporter/delete', methods=['POST'])
@@ -847,7 +838,7 @@ def task_presenter(short_name, task_id):
         response = dict(template = tmpl, **template_args)
         return handle_content_type(response)
 
-    if not (task.project_id == project.id):
+    if task.project_id != project.id:
         return respond('/projects/task/wrong.html')
 
     guard = ContributionsGuard(sentinel.master)
@@ -904,10 +895,12 @@ def presenter(short_name):
            get any credit for your contributions. Sign in \
            now!"
 
-    if project.info.get("tutorial") and \
-            request.cookies.get(project.short_name + "tutorial") is None:
+    if (
+        project.info.get("tutorial")
+        and request.cookies.get(f"{project.short_name}tutorial") is None
+    ):
         resp = respond('/projects/tutorial.html')
-        resp.set_cookie(project.short_name + 'tutorial', 'seen')
+        resp.set_cookie(f'{project.short_name}tutorial', 'seen')
         return resp
     else:
         if has_no_presenter(project):
@@ -922,8 +915,7 @@ def tutorial(short_name):
     title = project_title(project, "Tutorial")
 
     if project.needs_password():
-        redirect_to_password = _check_if_redirect_to_password(project)
-        if redirect_to_password:
+        if redirect_to_password := _check_if_redirect_to_password(project):
             return redirect_to_password
     else:
         ensure_authorized_to('read', project)
@@ -945,15 +937,12 @@ def export(short_name, task_id):
     project, owner, ps = project_by_shortname(short_name)
 
     if project.needs_password():
-        redirect_to_password = _check_if_redirect_to_password(project)
-        if redirect_to_password:
+        if redirect_to_password := _check_if_redirect_to_password(project):
             return redirect_to_password
     else:
         ensure_authorized_to('read', project)
 
-    # Check if the task belongs to the project and exists
-    task = task_repo.get_task_by(project_id=project.id, id=task_id)
-    if task:
+    if task := task_repo.get_task_by(project_id=project.id, id=task_id):
         taskruns = task_repo.filter_task_runs_by(task_id=task_id, project_id=project.id)
         results = [tr.dictize() for tr in taskruns]
         return Response(json.dumps(results), mimetype='application/json')
@@ -967,8 +956,7 @@ def tasks(short_name):
     title = project_title(project, "Tasks")
 
     if project.needs_password():
-        redirect_to_password = _check_if_redirect_to_password(project)
-        if redirect_to_password:
+        if redirect_to_password := _check_if_redirect_to_password(project):
             return redirect_to_password
     else:
         ensure_authorized_to('read', project)
@@ -1141,7 +1129,7 @@ def export_to(short_name):
     def respond_ckan(ty):
         # First check if there is a package (dataset) in CKAN
         msg_1 = gettext("Data exported to ")
-        msg = msg_1 + "%s ..." % current_app.config['CKAN_URL']
+        msg = msg_1 + f"{current_app.config['CKAN_URL']} ..."
         ckan = Ckan(url=current_app.config['CKAN_URL'],
                     api_key=current_user.ckan_api)
         project_url = url_for('.details', short_name=project.short_name, _external=True)
@@ -1185,18 +1173,17 @@ def export_to(short_name):
         except Exception as inst:
             if len(inst.args) == 3:
                 t, msg, status_code = inst.args
-                msg = ("Error: %s with status code: %s" % (t, status_code))
+                msg = f"Error: {t} with status code: {status_code}"
             else:  # pragma: no cover
-                msg = ("Error: %s" % inst.args[0])
+                msg = f"Error: {inst.args[0]}"
             current_app.logger.error(msg)
             flash(msg, 'danger')
         finally:
             return respond()
 
     export_formats = ["json", "csv"]
-    if current_user.is_authenticated:
-        if current_user.ckan_api:
-            export_formats.append('ckan')
+    if current_user.is_authenticated and current_user.ckan_api:
+        export_formats.append('ckan')
 
     ty = request.args.get('type')
     fmt = request.args.get('format')
@@ -1230,8 +1217,7 @@ def show_stats(short_name):
     pro = pro_features(owner)
 
     if project.needs_password():
-        redirect_to_password = _check_if_redirect_to_password(project)
-        if redirect_to_password:
+        if redirect_to_password := _check_if_redirect_to_password(project):
             return redirect_to_password
     else:
         ensure_authorized_to('read', project)
@@ -1241,7 +1227,7 @@ def show_stats(short_name):
                                                                 current_user,
                                                                 ps)
 
-    if not ((ps.n_tasks > 0) and (ps.n_task_runs > 0)):
+    if ps.n_tasks <= 0 or ps.n_task_runs <= 0:
         project = add_custom_contrib_button_to(project, get_user_id_or_ip(),
                                                ps=ps)
         response = dict(template='/projects/non_stats.html',
@@ -1414,10 +1400,7 @@ def task_scheduler(short_name):
 
     if request.method == 'POST' and form.validate():
         project = project_repo.get_by_shortname(short_name=project.short_name)
-        if project.info.get('sched'):
-            old_sched = project.info['sched']
-        else:
-            old_sched = 'default'
+        old_sched = project.info['sched'] if project.info.get('sched') else 'default'
         if form.sched.data:
             project.info['sched'] = form.sched.data
         project_repo.save(project)
@@ -1455,6 +1438,7 @@ def task_priority(short_name):
                         owner=owner_sanitized,
                         pro_features=pro)
         return handle_content_type(response)
+
     ensure_authorized_to('read', project)
     ensure_authorized_to('update', project)
 
@@ -1478,7 +1462,13 @@ def task_priority(short_name):
                                               'task.priority_0',
                                               old_value, new_value)
                 else:  # pragma: no cover
-                    flash(gettext(("Ooops, Task.id=%s does not belong to the project" % task_id)), 'danger')
+                    flash(
+                        gettext(
+                            f"Ooops, Task.id={task_id} does not belong to the project"
+                        ),
+                        'danger',
+                    )
+
         flash(gettext("Task priority has been changed"), 'success')
         return respond()
     else:
@@ -1496,8 +1486,7 @@ def show_blogposts(short_name):
         blogposts = blog_repo.filter_by(project_id=project.id,
                                         published=True)
     if project.needs_password():
-        redirect_to_password = _check_if_redirect_to_password(project)
-        if redirect_to_password:
+        if redirect_to_password := _check_if_redirect_to_password(project):
             return redirect_to_password
     else:
         ensure_authorized_to('read', Blogpost, project_id=project.id)
@@ -1536,8 +1525,7 @@ def show_blogpost(short_name, id):
             current_user.id != blogpost.user_id):
         raise abort(404)
     if project.needs_password():
-        redirect_to_password = _check_if_redirect_to_password(project)
-        if redirect_to_password:
+        if redirect_to_password := _check_if_redirect_to_password(project):
             return redirect_to_password
     else:
         ensure_authorized_to('read', blogpost)
@@ -1734,7 +1722,7 @@ def publish(short_name):
 def project_event_stream(short_name, channel_type):
     """Event stream for pub/sub notifications."""
     pubsub = sentinel.master.pubsub()
-    channel = "channel_%s_%s" % (channel_type, short_name)
+    channel = f"channel_{channel_type}_{short_name}"
     pubsub.subscribe(channel)
     for message in pubsub.listen():
         yield 'data: %s\n\n' % message['data']
@@ -1744,17 +1732,19 @@ def project_event_stream(short_name, channel_type):
 @login_required
 def project_stream_uri_private(short_name):
     """Returns stream."""
-    if current_app.config.get('SSE'):
-        project, owner, ps = project_by_shortname(short_name)
-
-        if current_user.id in project.owners_ids or current_user.admin:
-            return Response(project_event_stream(short_name, 'private'),
-                            mimetype="text/event-stream",
-                            direct_passthrough=True)
-        else:
-            return abort(403)
-    else:
+    if not current_app.config.get('SSE'):
         return abort(404)
+    project, owner, ps = project_by_shortname(short_name)
+
+    return (
+        Response(
+            project_event_stream(short_name, 'private'),
+            mimetype="text/event-stream",
+            direct_passthrough=True,
+        )
+        if current_user.id in project.owners_ids or current_user.admin
+        else abort(403)
+    )
 
 
 @blueprint.route('/<short_name>/publicstream')
@@ -1780,8 +1770,7 @@ def webhook_handler(short_name, oid=None):
 
     responses = webhook_repo.filter_by(project_id=project.id)
     if request.method == 'POST' and oid:
-        tmp = webhook_repo.get(oid)
-        if tmp:
+        if tmp := webhook_repo.get(oid):
             webhook_queue.enqueue(webhook, project.webhook,
                                   tmp.payload, tmp.id, True)
             return json.dumps(tmp.dictize())
@@ -1789,8 +1778,7 @@ def webhook_handler(short_name, oid=None):
             abort(404)
 
     ensure_authorized_to('read', Webhook, project_id=project.id)
-    redirect_to_password = _check_if_redirect_to_password(project)
-    if redirect_to_password:
+    if redirect_to_password := _check_if_redirect_to_password(project):
         return redirect_to_password
 
     if request.method == 'GET' and request.args.get('all'):
@@ -2019,7 +2007,7 @@ def export_project_report(short_name):
     """Export individual project information in the given format"""
 
     project, owner, ps = project_by_shortname(short_name)
-    if not current_user.admin and not current_user.id in project.owners_ids:
+    if not current_user.admin and current_user.id not in project.owners_ids:
         return abort(403)
 
     project_report_csv_exporter = ProjectReportCsvExporter()
@@ -2062,11 +2050,8 @@ def export_project_report(short_name):
     ty = request.args.get('type')
     fmt = request.args.get('format')
 
-    if not (fmt and ty):
-        if len(request.args) >= 1:
-            return abort(404)
-        return respond()
-
+    if not fmt or not ty:
+        return abort(404) if len(request.args) >= 1 else respond()
     if fmt not in export_formats:
         abort(415)
 

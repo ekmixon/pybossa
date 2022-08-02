@@ -60,7 +60,7 @@ class UserRepository(Repository):
     def search_by_name(self, keyword):
         if len(keyword) == 0:
             return []
-        keyword = '%' + keyword.lower() + '%'
+        keyword = f'%{keyword.lower()}%'
         return self.db.session.query(User).filter(or_(func.lower(User.name).like(keyword),
                                   func.lower(User.fullname).like(keyword))).all()
 
@@ -108,10 +108,12 @@ class UserRepository(Repository):
     def _validate_can_be(self, action, user):
         if not isinstance(user, User):
             name = user.__class__.__name__
-            msg = '%s cannot be %s by %s' % (name, action, self.__class__.__name__)
+            msg = f'{name} cannot be {action} by {self.__class__.__name__}'
             raise WrongObjectError(msg)
 
     def get_users(self, ids):
-        if not ids:
-            return []
-        return self.db.session.query(User).filter(User.id.in_(ids)).all()
+        return (
+            self.db.session.query(User).filter(User.id.in_(ids)).all()
+            if ids
+            else []
+        )

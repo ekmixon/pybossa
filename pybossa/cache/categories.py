@@ -28,8 +28,7 @@ session = db.slave_session
        timeout=timeouts.get('CATEGORY_TIMEOUT'))
 def get_all():
     """Return all categories"""
-    data = session.query(model.category.Category).all()
-    return data
+    return session.query(model.category.Category).all()
 
 
 @cache(key_prefix="categories_used",

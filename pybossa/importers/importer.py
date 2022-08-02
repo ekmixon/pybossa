@@ -39,7 +39,7 @@ class Importer(object):
                                s3=BulkTaskS3Import,
                                localCSV=BulkTaskLocalCSVImport,
                                iiif=BulkTaskIIIFImporter)
-        self._importer_constructor_params = dict()
+        self._importer_constructor_params = {}
 
     def register_flickr_importer(self, flickr_params):
         """Register Flickr importer."""
@@ -78,11 +78,10 @@ class Importer(object):
             msg = gettext('It looks like there were no new records to import')
             return ImportReport(message=msg, metadata=None, total=n)
         metadata = importer.import_metadata()
-        msg = str(n) + " " + gettext('new tasks were imported successfully')
+        msg = f"{str(n)} " + gettext('new tasks were imported successfully')
         if n == 1:
-            msg = str(n) + " " + gettext('new task was imported successfully')
-        report = ImportReport(message=msg, metadata=metadata, total=n)
-        return report
+            msg = f"{str(n)} " + gettext('new task was imported successfully')
+        return ImportReport(message=msg, metadata=metadata, total=n)
 
     def count_tasks_to_import(self, **form_data):
         """Count tasks to import."""

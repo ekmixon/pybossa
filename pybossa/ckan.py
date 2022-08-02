@@ -37,8 +37,11 @@ class Ckan(object):
         sqlalchemy_refs = ['project', 'task_runs', 'pct_status']
         fields = []
         for attr in obj.__dict__.keys():
-            if ("__" not in attr[0:2] and "_" not in attr[0:1] and
-                    attr not in sqlalchemy_refs):
+            if (
+                "__" not in attr[:2]
+                and "_" not in attr[:1]
+                and attr not in sqlalchemy_refs
+            ):
                 if attr in json_fields:
                     fields.append({'id': attr, 'type': 'json'})
                 elif attr in timestamp_fields:
@@ -50,13 +53,12 @@ class Ckan(object):
                 elif attr in float_fields:
                     fields.append({'id': attr, 'type': 'float'})
                 else:
-                    fields.append({'id': "%s_%s" % (obj.__name__, attr),
-                                   'type': 'int'})
+                    fields.append({'id': f"{obj.__name__}_{attr}", 'type': 'int'})
         return fields
 
     def __init__(self, url, api_key=None):
         """Init method."""
-        self.url = url + "/api/3"
+        self.url = f"{url}/api/3"
         self.headers = {'Authorization': api_key,
                         'Content-type': 'application/json'}
         self.package = None
@@ -68,32 +70,32 @@ class Ckan(object):
 
     def get_resource_id(self, name):
         """Get resource ID from name."""
-        for r in self.package['resources']:
-            if r['name'] == name:
-                return r['id']
-        return False
+        return next(
+            (r['id'] for r in self.package['resources'] if r['name'] == name),
+            False,
+        )
 
     def package_exists(self, name):
         """Check if package exists."""
         pkg = {'id': name}
-        r = requests.get(self.url + "/action/package_show",
-                         headers=self.headers,
-                         params=pkg)
-        if r.status_code == 200 or r.status_code == 404 or r.status_code == 403:
-            try:
-                output = json.loads(r.text)
-                if output.get('success'):
-                    self.package = output['result']
-                    return output['result'], None
-                else:
-                    return False, None
-            except ValueError:
-                return False, Exception("CKAN: JSON not valid", r.text,
-                                        r.status_code)
-        else:
+        r = requests.get(
+            f"{self.url}/action/package_show", headers=self.headers, params=pkg
+        )
+
+        if r.status_code not in [200, 404, 403]:
             raise Exception("CKAN: the remote site failed! package_show failed",
                             r.text,
                             r.status_code)
+        try:
+            output = json.loads(r.text)
+            if output.get('success'):
+                self.package = output['result']
+                return output['result'], None
+            else:
+                return False, None
+        except ValueError:
+            return False, Exception("CKAN: JSON not valid", r.text,
+                                    r.status_code)
 
     def package_create(self, project, user, url):
         """Create package."""
@@ -104,9 +106,12 @@ class Ckan(object):
                'notes': project.description,
                'type': 'pybossa',
                'url': url}
-        r = requests.post(self.url + "/action/package_create",
-                          headers=self.headers,
-                          data=json.dumps(pkg))
+        r = requests.post(
+            f"{self.url}/action/package_create",
+            headers=self.headers,
+            data=json.dumps(pkg),
+        )
+
         if r.status_code == 200:
             output = json.loads(r.text)
             self.package = output['result']
@@ -128,9 +133,12 @@ class Ckan(object):
                'type': 'pybossa',
                'resources': resources,
                'url': url}
-        r = requests.post(self.url + "/action/package_update",
-                          headers=self.headers,
-                          data=json.dumps(pkg))
+        r = requests.post(
+            f"{self.url}/action/package_update",
+            headers=self.headers,
+            data=json.dumps(pkg),
+        )
+
         if r.status_code == 200:
             output = json.loads(r.text)
             self.package = output['result']
@@ -145,20 +153,25 @@ class Ckan(object):
         """Create resource."""
         if package_id is None:
             package_id = self.package['id']
-        rsrc = {'package_id': package_id,
-                'name': name,
-                'url': self.package['url'],
-                'description': "%ss" % name}
-        r = requests.post(self.url + "/action/resource_create",
-                          headers=self.headers,
-                          data=json.dumps(rsrc))
+        rsrc = {
+            'package_id': package_id,
+            'name': name,
+            'url': self.package['url'],
+            'description': f"{name}s",
+        }
+
+        r = requests.post(
+            f"{self.url}/action/resource_create",
+            headers=self.headers,
+            data=json.dumps(rsrc),
+        )
+
         if r.status_code == 200:
             return json.loads(r.text)
-        else:
-            msg = "CKAN: the remote site failed! resource_create failed"
-            raise Exception(msg,
-                            r.text,
-                            r.status_code)
+        msg = "CKAN: the remote site failed! resource_create failed"
+        raise Exception(msg,
+                        r.text,
+                        r.status_code)
 
     def datastore_create(self, name, resource_id=None):
         """Create datastore."""
@@ -169,16 +182,16 @@ class Ckan(object):
                      'indexes': self.indexes[name],
                      'primary_key': self.primary_key[name],
                      'force': True}
-        r = requests.post(self.url + "/action/datastore_create",
-                          headers=self.headers,
-                          data=json.dumps(datastore))
+        r = requests.post(
+            f"{self.url}/action/datastore_create",
+            headers=self.headers,
+            data=json.dumps(datastore),
+        )
+
 
         if r.status_code == 200:
             output = json.loads(r.text)
-            if output['success']:
-                return output['result']
-            else:  # pragma: no cover
-                return output
+            return output['result'] if output['success'] else output
         else:
             msg = "CKAN: the remote site failed! datastore_create failed"
             raise Exception(msg,
@@ -189,9 +202,7 @@ class Ckan(object):
         """Upsert datastore."""
         if resource_id is None:
             resource_id = self.get_resource_id(name)
-        _records = ''
-        for text in records:
-            _records += text
+        _records = ''.join(records)
         _records = json.loads(_records)
         for i in range(0, len(_records), 20):
             chunk = _records[i:i + 20]
@@ -199,9 +210,12 @@ class Ckan(object):
                        'records': chunk,
                        'method': 'insert',
                        'force': True}
-            r = requests.post(self.url + "/action/datastore_upsert",
-                              headers=self.headers,
-                              data=json.dumps(payload))
+            r = requests.post(
+                f"{self.url}/action/datastore_upsert",
+                headers=self.headers,
+                data=json.dumps(payload),
+            )
+
             if r.status_code != 200:
                 msg = "CKAN: the remote site failed! datastore_upsert failed"
                 raise Exception(msg,
@@ -212,13 +226,15 @@ class Ckan(object):
     def datastore_delete(self, name, resource_id=None):
         """Delete datastore."""
         payload = {'resource_id': resource_id, 'force': True}
-        r = requests.post(self.url + "/action/datastore_delete",
-                          headers=self.headers,
-                          data=json.dumps(payload))
-        if r.status_code == 404 or r.status_code == 200:
+        r = requests.post(
+            f"{self.url}/action/datastore_delete",
+            headers=self.headers,
+            data=json.dumps(payload),
+        )
+
+        if r.status_code in [404, 200]:
             return True
-        else:
-            msg = "CKAN: the remote site failed! datastore_delete failed"
-            raise Exception(msg,
-                            r.text,
-                            r.status_code)
+        msg = "CKAN: the remote site failed! datastore_delete failed"
+        raise Exception(msg,
+                        r.text,
+                        r.status_code)

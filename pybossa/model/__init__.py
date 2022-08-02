@@ -40,27 +40,26 @@ class DomainObject(object):
 
     def info_public_keys(self, data=None):
         """Return a dictionary of info field with public keys."""
-        out = dict()
         if data is None:
             data = self.dictize()
-        for key in self.public_info_keys():
-            if data.get('info'):
-                out[key] = data.get('info').get(key)
-        return out
+        return {
+            key: data.get('info').get(key)
+            for key in self.public_info_keys()
+            if data.get('info')
+        }
 
     def to_public_json(self, data=None):
         """Return a dict that can be exported to JSON
         with only public attributes."""
 
-        out = dict()
         if data is None:
             data = self.dictize()
-        for col in self.public_attributes():
-            if col == 'info':
-                out[col] = self.info_public_keys(data=data)
-            else:
-                out[col] = data.get(col)
-        return out
+        return {
+            col: self.info_public_keys(data=data)
+            if col == 'info'
+            else data.get(col)
+            for col in self.public_attributes()
+        }
 
     def public_attributes(self):  # pragma: no cover
         """To be override by other class."""

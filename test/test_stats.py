@@ -71,18 +71,18 @@ class TestStats(Test):
         self.prepare_data()
         hour = str(datetime.datetime.utcnow().strftime('%H'))
         hours, hours_anon, hours_auth, max_hours,\
-            max_hours_anon, max_hours_auth = stats.stats_hours(self.project.id)
+                max_hours_anon, max_hours_auth = stats.stats_hours(self.project.id)
         print(hours)
-        for i in range(0, 24):
+        for i in range(24):
             # There should be only 8 answers at current hour
             if str(i).zfill(2) == hour:
                 err_msg = "At time %s there should be 8 answers" \
-                          "but there are %s" % (str(i).zfill(2),
+                              "but there are %s" % (str(i).zfill(2),
                                                 hours[str(i).zfill(2)])
                 assert hours[str(i).zfill(2)] == 8, "There should be 8 answers"
             else:
                 err_msg = "At time %s there should be 0 answers" \
-                          "but there are %s" % (str(i).zfill(2),
+                              "but there are %s" % (str(i).zfill(2),
                                                 hours[str(i).zfill(2)])
                 assert hours[str(i).zfill(2)] == 0, err_msg
 

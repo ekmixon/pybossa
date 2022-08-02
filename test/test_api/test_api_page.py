@@ -44,23 +44,29 @@ class TestPageAPI(TestAPI):
         assert len(data) == 10, data
 
         # As user
-        res = self.app.get(url + '?api_key=' + user.api_key)
+        res = self.app.get(f'{url}?api_key={user.api_key}')
         data = json.loads(res.data)
         assert len(data) == 0, data
 
         # As owner
-        res = self.app.get(url + '?api_key=' + owner.api_key)
+        res = self.app.get(f'{url}?api_key={owner.api_key}')
         data = json.loads(res.data)
         assert len(data) == 9, data
 
         # Valid field but wrong value
-        res = self.app.get(url + "?media_url=wrongvalue")
+        res = self.app.get(f"{url}?media_url=wrongvalue")
         data = json.loads(res.data)
         assert len(data) == 0, data
 
         # Multiple fields
-        res = self.app.get(url + '?info=container::' +
-                           pages[0].info['container'] + '&project_id=' + str(project.id))
+        res = self.app.get(
+            (
+                (f'{url}?info=container::' + pages[0].info['container'])
+                + '&project_id='
+            )
+            + str(project.id)
+        )
+
         data = json.loads(res.data)
         # One result
         assert len(data) == 9, data
@@ -69,20 +75,20 @@ class TestPageAPI(TestAPI):
         assert data[0]['media_url'] == pages[0].media_url, data
 
         # Limits
-        res = self.app.get(url + "?limit=1")
+        res = self.app.get(f"{url}?limit=1")
         data = json.loads(res.data)
         for item in data:
             assert item['media_url'] == page.media_url, item
         assert len(data) == 1, data
 
         # Keyset pagination
-        res = self.app.get(url + '?limit=1&last_id=' + str(pages[8].id))
+        res = self.app.get(f'{url}?limit=1&last_id={str(pages[8].id)}')
         data = json.loads(res.data)
         assert len(data) == 1, len(data)
         assert data[0]['id'] == page.id
 
         # Errors
-        res = self.app.get(url + "?something")
+        res = self.app.get(f"{url}?something")
         err = json.loads(res.data)
         err_msg = "AttributeError exception should be raised"
         res.status_code == 415, err_msg
@@ -140,14 +146,14 @@ class TestPageAPI(TestAPI):
         assert data['status_code'] == 401, data
 
         # As a user
-        url = '/api/page?api_key=%s' % user.api_key
+        url = f'/api/page?api_key={user.api_key}'
         res = self.app.post(url, data=json.dumps(payload))
         data = json.loads(res.data)
         assert res.status_code == 403, data
         assert data['status_code'] == 403, data
 
         # As owner
-        url = '/api/page?api_key=%s' % owner.api_key
+        url = f'/api/page?api_key={owner.api_key}'
         payload['project_id'] = project.id
         res = self.app.post(url, data=json.dumps(payload))
         data = json.loads(res.data)
@@ -156,29 +162,29 @@ class TestPageAPI(TestAPI):
         assert data['media_url'] == 'url', data
 
         # As owner wrong 404 project_id
-        url = '/api/page?api_key=%s' % owner.api_key
+        url = f'/api/page?api_key={owner.api_key}'
         payload['project_id'] = -1
         res = self.app.post(url, data=json.dumps(payload))
         data = json.loads(res.data)
         assert res.status_code == 415, data
 
         # As owner using wrong project_id
-        url = '/api/page?api_key=%s' % owner.api_key
+        url = f'/api/page?api_key={owner.api_key}'
         payload['project_id'] = project2.id
         res = self.app.post(url, data=json.dumps(payload))
         data = json.loads(res.data)
         assert res.status_code == 403, data
 
         # As owner using wrong attribute
-        url = '/api/page?api_key=%s' % owner.api_key
+        url = f'/api/page?api_key={owner.api_key}'
         payload['project_id'] = project2.id
         payload['foo'] = 'bar'
         res = self.app.post(url, data=json.dumps(payload))
         data = json.loads(res.data)
         assert res.status_code == 415, data
 
-        # As owner using reserved key 
-        url = '/api/page?api_key=%s' % owner.api_key
+        # As owner using reserved key
+        url = f'/api/page?api_key={owner.api_key}'
         payload['project_id'] = project.id
         payload['id'] = 3
         res = self.app.post(url, data=json.dumps(payload))
@@ -195,19 +201,19 @@ class TestPageAPI(TestAPI):
 
         # As anon
         page.slug = 'new'
-        url = '/api/page/%s' % page.id
+        url = f'/api/page/{page.id}'
         res = self.app.put(url, data=json.dumps(page.dictize()))
         data = json.loads(res.data)
         assert res.status_code == 401, res.status_code
 
         # As user
-        url = '/api/page/%s?api_key=%s' % (page.id, user.api_key)
+        url = f'/api/page/{page.id}?api_key={user.api_key}'
         res = self.app.put(url, data=json.dumps(page.dictize()))
         data = json.loads(res.data)
         assert res.status_code == 403, res.status_code
 
         # As owner
-        url = '/api/page/%s?api_key=%s' % (page.id, owner.api_key)
+        url = f'/api/page/{page.id}?api_key={owner.api_key}'
         payload = page.dictize()
         del payload['created']
         del payload['id']
@@ -219,7 +225,7 @@ class TestPageAPI(TestAPI):
         # as owner with reserved key
         page.slug = 'new'
         page.created = 'today'
-        url = '/api/page/%s?api_key=%s' % (page.id, owner.api_key)
+        url = f'/api/page/{page.id}?api_key={owner.api_key}'
         payload = page.dictize()
         del payload['id']
         res = self.app.put(url, data=json.dumps(payload))
@@ -229,7 +235,7 @@ class TestPageAPI(TestAPI):
 
         # as owner with wrong key
         page.slug = 'new-slug'
-        url = '/api/page/%s?api_key=%s' % (page.id, owner.api_key)
+        url = f'/api/page/{page.id}?api_key={owner.api_key}'
         payload = page.dictize()
         del payload['created']
         del payload['id']
@@ -252,24 +258,24 @@ class TestPageAPI(TestAPI):
         page2 = PageFactory.create(project_id=project.id)
 
         # As anon
-        url = '/api/page/%s' % page.id
+        url = f'/api/page/{page.id}'
         res = self.app.delete(url)
         assert res.status_code == 401, res.status_code
 
         # As user
-        url = '/api/page/%s?api_key=%s' % (page.id, user.api_key)
+        url = f'/api/page/{page.id}?api_key={user.api_key}'
         res = self.app.delete(url)
         assert res.status_code == 403, res.status_code
 
         # As owner
-        url = '/api/page/%s?api_key=%s' % (page.id, owner.api_key)
+        url = f'/api/page/{page.id}?api_key={owner.api_key}'
         res = self.app.delete(url)
         assert res.status_code == 204, res.status_code
         mock_delete.assert_called_with(file_info['file_name'],
                                        file_info['container'])
 
         # As admin
-        url = '/api/page/%s?api_key=%s' % (page2.id, admin.api_key)
+        url = f'/api/page/{page2.id}?api_key={admin.api_key}'
         res = self.app.delete(url)
         assert res.status_code == 204, res.status_code
 
@@ -300,7 +306,7 @@ class TestPageAPI(TestAPI):
         payload = dict(project_id=project.id,
                        file=img)
 
-        url = '/api/page?api_key=%s' % user.api_key
+        url = f'/api/page?api_key={user.api_key}'
         res = self.app.post(url, data=payload,
                             content_type="multipart/form-data")
         data = json.loads(res.data)
@@ -315,12 +321,12 @@ class TestPageAPI(TestAPI):
                        slug="blog",
                        info=json.dumps(dict(foo=1)))
 
-        url = '/api/page?api_key=%s' % project.owner.api_key
+        url = f'/api/page?api_key={project.owner.api_key}'
         res = self.app.post(url, data=payload,
                             content_type="multipart/form-data")
         data = json.loads(res.data)
         assert res.status_code == 200, data
-        container = "user_%s" % owner.id
+        container = f"user_{owner.id}"
         assert data['info']['container'] == container, data
         assert data['info']['file_name'] == 'test_file.jpg', data
         assert data['info']['foo'] == 1, data
@@ -333,7 +339,7 @@ class TestPageAPI(TestAPI):
                        slug="blog",
                        file=img)
 
-        url = '/api/page?api_key=%s' % owner.api_key
+        url = f'/api/page?api_key={owner.api_key}'
         payload['project_id'] = -1
         res = self.app.post(url, data=payload,
                             content_type="multipart/form-data")
@@ -347,7 +353,7 @@ class TestPageAPI(TestAPI):
                        slug="blog",
                        file=img)
 
-        url = '/api/page?api_key=%s' % owner.api_key
+        url = f'/api/page?api_key={owner.api_key}'
         payload['project_id'] = project2.id
         res = self.app.post(url, data=payload,
                             content_type="multipart/form-data")
@@ -361,7 +367,7 @@ class TestPageAPI(TestAPI):
                        slug="blog",
                        wrong=img)
 
-        url = '/api/page?api_key=%s' % owner.api_key
+        url = f'/api/page?api_key={owner.api_key}'
         res = self.app.post(url, data=payload,
                             content_type="multipart/form-data")
         data = json.loads(res.data)
@@ -374,7 +380,7 @@ class TestPageAPI(TestAPI):
                        slug="blog",
                        file=img)
 
-        url = '/api/page?api_key=%s' % owner.api_key
+        url = f'/api/page?api_key={owner.api_key}'
         payload['project_id'] = project.id
         payload['id'] = 3
         res = self.app.post(url, data=payload,
@@ -398,7 +404,7 @@ class TestPageAPI(TestAPI):
                        file=img)
 
         # As anon
-        url = '/api/page/%s' % hp.id
+        url = f'/api/page/{hp.id}'
         res = self.app.put(url, data=payload,
                            content_type="multipart/form-data")
         data = json.loads(res.data)
@@ -412,7 +418,7 @@ class TestPageAPI(TestAPI):
                        slug="admin",
                        file=img)
 
-        url = '/api/page/%s?api_key=%s' % (hp.id, user.api_key)
+        url = f'/api/page/{hp.id}?api_key={user.api_key}'
         res = self.app.put(url, data=payload,
                            content_type="multipart/form-data")
         data = json.loads(res.data)
@@ -426,13 +432,12 @@ class TestPageAPI(TestAPI):
                        slug="admin",
                        file=img)
 
-        url = '/api/page/%s?api_key=%s' % (hp.id,
-                                                      project.owner.api_key)
+        url = f'/api/page/{hp.id}?api_key={project.owner.api_key}'
         res = self.app.put(url, data=payload,
                            content_type="multipart/form-data")
         data = json.loads(res.data)
         assert res.status_code == 200, data
-        container = "user_%s" % owner.id
+        container = f"user_{owner.id}"
         assert data['info']['container'] == container, data
         assert data['info']['file_name'] == 'test_file.jpg', data
         assert 'test_file.jpg' in data['media_url'], data
@@ -444,7 +449,7 @@ class TestPageAPI(TestAPI):
                        slug="admin",
                        file=img)
 
-        url = '/api/page/%s?api_key=%s' % (hp.id, owner.api_key)
+        url = f'/api/page/{hp.id}?api_key={owner.api_key}'
         payload['project_id'] = -1
         res = self.app.put(url, data=payload,
                            content_type="multipart/form-data")
@@ -457,7 +462,7 @@ class TestPageAPI(TestAPI):
         payload = dict(project_id=project.id,
                        file=img)
 
-        url = '/api/page/%s?api_key=%s' % (hp.id, owner.api_key)
+        url = f'/api/page/{hp.id}?api_key={owner.api_key}'
         payload['project_id'] = project2.id
         res = self.app.put(url, data=payload,
                            content_type="multipart/form-data")
@@ -470,7 +475,7 @@ class TestPageAPI(TestAPI):
         payload = dict(project_id=project.id,
                        wrong=img)
 
-        url = '/api/page/%s?api_key=%s' % (hp.id, owner.api_key)
+        url = f'/api/page/{hp.id}?api_key={owner.api_key}'
         res = self.app.put(url, data=payload,
                            content_type="multipart/form-data")
         data = json.loads(res.data)
@@ -482,7 +487,7 @@ class TestPageAPI(TestAPI):
         payload = dict(project_id=project.id,
                        file=img)
 
-        url = '/api/page/%s?api_key=%s' % (hp.id, owner.api_key)
+        url = f'/api/page/{hp.id}?api_key={owner.api_key}'
         payload['project_id'] = project.id
         payload['id'] = 3
         res = self.app.put(url, data=payload,

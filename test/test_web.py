@@ -111,9 +111,7 @@ class TestWeb(web.Helper):
         template_folder = os.path.join(APP_ROOT, '..', 'pybossa',
                                        self.flask_app.template_folder)
         file_name = os.path.join(template_folder, "home", "_results.html")
-        mode = "w+b"
-        if six.PY2:
-            mode = "w"
+        mode = "w" if six.PY2 else "w+b"
         with open(file_name, mode) as f:
             f.write(b"foobar")
         res = self.app.get('/results')
@@ -129,9 +127,7 @@ class TestWeb(web.Helper):
         template_folder = os.path.join(APP_ROOT, '..', 'pybossa',
                                        self.flask_app.template_folder)
         file_name = os.path.join(template_folder, "home", "_results.html")
-        mode = "w+b"
-        if six.PY2:
-            mode = "w"
+        mode = "w" if six.PY2 else "w+b"
         with open(file_name, mode) as f:
             f.write(b"foobar")
         res = self.app_get_json('/results')
@@ -189,7 +185,7 @@ class TestWeb(web.Helper):
         assert 'api_key' not in first_user, err_msg
 
         users = UserFactory.create_batch(40)
-        for u in users[0:22]:
+        for u in users[:22]:
             TaskRunFactory.create(user=u)
             TaskRunFactory.create(user=u)
             TaskRunFactory.create(user=u)
@@ -207,7 +203,7 @@ class TestWeb(web.Helper):
 
         update_leaderboard(info='n')
 
-        res = self.app_get_json('/leaderboard/window/3?api_key=%s' % user.api_key)
+        res = self.app_get_json(f'/leaderboard/window/3?api_key={user.api_key}')
         data = json.loads(res.data)
         err_msg = 'Top users missing'
         assert 'top_users' in str(data), err_msg
@@ -216,7 +212,7 @@ class TestWeb(web.Helper):
         assert len(leaders) == (20+3+1+3), len(leaders)
         assert leaders[23]['name'] == user.name
 
-        res = self.app_get_json('/leaderboard/window/11?api_key=%s' % user.api_key)
+        res = self.app_get_json(f'/leaderboard/window/11?api_key={user.api_key}')
         data = json.loads(res.data)
         err_msg = 'Top users missing'
         assert 'top_users' in str(data), err_msg
@@ -238,13 +234,13 @@ class TestWeb(web.Helper):
             assert len(leaders) == (20), len(leaders)
             score = 10
             rank = 1
-            for u in leaders[0:10]:
+            for u in leaders[:10]:
                 assert u['score'] == score, u
                 assert u['rank'] == rank, u
                 score = score - 1
                 rank = rank + 1
 
-            res = self.app_get_json('/leaderboard/window/3?api_key=%s&info=n' % user.api_key)
+            res = self.app_get_json(f'/leaderboard/window/3?api_key={user.api_key}&info=n')
             data = json.loads(res.data)
             err_msg = 'Top users missing'
             assert 'top_users' in str(data), err_msg
@@ -287,7 +283,7 @@ class TestWeb(web.Helper):
         project = db.session.query(Project).first()
         user = db.session.query(User).first()
         # Without stats
-        url = '/project/%s/stats' % project.short_name
+        url = f'/project/{project.short_name}/stats'
         res = self.app.get(url)
         assert "Sorry" in str(res.data), res.data
 
@@ -296,16 +292,16 @@ class TestWeb(web.Helper):
         db.session.add(task)
         db.session.commit()
 
-        for i in range(10):
+        for _ in range(10):
             task_run = TaskRun(project_id=project.id, task_id=1,
                                user_id=user.id,
                                info={'answer': 1})
             db.session.add(task_run)
             db.session.commit()
-            res = self.app.get('api/project/%s/newtask' % project.id)
+            res = self.app.get(f'api/project/{project.id}/newtask')
 
         # With stats
-        url = '/project/%s/stats' % project.short_name
+        url = f'/project/{project.short_name}/stats'
         update_stats(project.id)
         res = self.app.get(url)
         assert res.status_code == 200, res.status_code
@@ -321,7 +317,7 @@ class TestWeb(web.Helper):
         project = db.session.query(Project).first()
         user = db.session.query(User).first()
         # Without stats
-        url = '/project/%s/stats' % project.short_name
+        url = f'/project/{project.short_name}/stats'
         res = self.app_get_json(url)
         data = json.loads(res.data)
         err_msg = 'Field should not be present'
@@ -347,18 +343,18 @@ class TestWeb(web.Helper):
         db.session.add(task)
         db.session.commit()
 
-        for i in range(10):
+        for _ in range(10):
             task_run = TaskRun(project_id=project.id, task_id=1,
                                user_id=user.id,
                                info={'answer': 1})
             db.session.add(task_run)
             db.session.commit()
-            self.app_get_json('api/project/%s/newtask' % project.id)
+            self.app_get_json(f'api/project/{project.id}/newtask')
 
         # With stats
         update_stats(project.id)
 
-        url = '/project/%s/stats' % project.short_name
+        url = f'/project/{project.short_name}/stats'
         res = self.app_get_json(url)
         data = json.loads(res.data)
         err_msg = 'Field missing in JSON response'
@@ -378,7 +374,7 @@ class TestWeb(web.Helper):
         assert 'secret_key' in data['project'], err_msg
         assert res.status_code == 200, res.status_code
 
-        url = '/project/%s/stats' % project.short_name
+        url = f'/project/{project.short_name}/stats'
         res = self.app_get_json(url)
         data = json.loads(res.data)
         err_msg = 'Field missing in JSON response'
@@ -398,7 +394,7 @@ class TestWeb(web.Helper):
         assert 'secret_key' in data['project'], err_msg
         assert res.status_code == 200, res.status_code
         err_msg = 'there should not have geo data'
-        assert data['userStats'].get('geo') == None, err_msg
+        assert data['userStats'].get('geo') is None, err_msg
 
 
     @with_context
@@ -411,7 +407,7 @@ class TestWeb(web.Helper):
         task = TaskFactory.create(project=project)
         TaskRunFactory.create(task=task)
         update_stats(project.id)
-        url = '/project/%s/stats' % project.short_name
+        url = f'/project/{project.short_name}/stats'
         self.signin(email=admin.email_addr, password='1234')
         res = self.app.get(url)
         assert_raises(ValueError, json.loads, res.data)
@@ -427,7 +423,7 @@ class TestWeb(web.Helper):
         project = ProjectFactory.create(owner=owner)
         task = TaskFactory.create(project=project)
         TaskRunFactory.create(task=task)
-        url = '/project/%s/stats' % project.short_name
+        url = f'/project/{project.short_name}/stats'
         self.signin(email=admin.email_addr, password='1234')
         update_stats(project.id)
         res = self.app_get_json(url)
@@ -456,7 +452,7 @@ class TestWeb(web.Helper):
         task = TaskFactory.create(project=pro_owned_project)
         TaskRunFactory.create(task=task)
         update_stats(task.project.id)
-        pro_url = '/project/%s/stats' % pro_owned_project.short_name
+        pro_url = f'/project/{pro_owned_project.short_name}/stats'
         res = self.app.get(pro_url)
         assert_raises(ValueError, json.loads, res.data)
         assert 'Average contribution time' in str(res.data)
@@ -468,7 +464,7 @@ class TestWeb(web.Helper):
         task = TaskFactory.create(project=pro_owned_project)
         TaskRunFactory.create(task=task)
         update_stats(task.project.id)
-        pro_url = '/project/%s/stats' % pro_owned_project.short_name
+        pro_url = f'/project/{pro_owned_project.short_name}/stats'
 
         res = self.app_get_json(pro_url)
         data = json.loads(res.data)
@@ -493,7 +489,7 @@ class TestWeb(web.Helper):
         project = ProjectFactory.create()
         task = TaskFactory.create(project=project)
         TaskRunFactory.create(task=task)
-        url = '/project/%s/stats' % project.short_name
+        url = f'/project/{project.short_name}/stats'
         res = self.app.get(url)
         assert_raises(ValueError, json.loads, res.data)
         assert 'Average contribution time'  not in str(res.data)
@@ -503,7 +499,7 @@ class TestWeb(web.Helper):
         project = ProjectFactory.create()
         task = TaskFactory.create(project=project)
         TaskRunFactory.create(task=task)
-        url = '/project/%s/stats' % project.short_name
+        url = f'/project/{project.short_name}/stats'
 
         update_stats(project.id)
 
@@ -892,7 +888,7 @@ class TestWeb(web.Helper):
         msg = "Confirmation email flag not updated"
         assert user.confirmation_email_sent, msg
         msg = "Email not marked as invalid"
-        assert user.valid_email is False, msg
+        assert not user.valid_email, msg
         current_app.config['ACCOUNT_CONFIRMATION_DISABLED'] = True
 
     @with_context
@@ -930,7 +926,7 @@ class TestWeb(web.Helper):
         msg = "Confirmation email flag not updated"
         assert user.confirmation_email_sent, msg
         msg = "Email not marked as invalid"
-        assert user.valid_email is False, msg
+        assert not user.valid_email, msg
         current_app.config['ACCOUNT_CONFIRMATION_DISABLED'] = True
         # JSON validation
         data = json.loads(res.data)
@@ -1089,7 +1085,7 @@ class TestWeb(web.Helper):
         msg = "Email has not been validated"
         assert user.valid_email, msg
         msg = "Confirmation email flag has not been restored"
-        assert user.confirmation_email_sent is False, msg
+        assert not user.confirmation_email_sent, msg
 
     @with_context
     @patch('pybossa.view.account.signer')
@@ -1112,7 +1108,7 @@ class TestWeb(web.Helper):
         msg = "Email has not been validated"
         assert user.valid_email, msg
         msg = "Confirmation email flag has not been restored"
-        assert user.confirmation_email_sent is False, msg
+        assert not user.confirmation_email_sent, msg
         msg = 'Email should be updated after validation.'
         assert user.email_addr == 'new@email.com', msg
 
@@ -1159,7 +1155,7 @@ class TestWeb(web.Helper):
             assert data.get('template') == 'account/newsletter.html', data
 
 
-            res = self.app_get_json(url + "?subscribe=True")
+            res = self.app_get_json(f"{url}?subscribe=True")
             data = json.loads(res.data)
             assert data.get('flash') == 'You are subscribed to our newsletter!', data
             assert data.get('status') == SUCCESS, data
@@ -1338,7 +1334,7 @@ class TestWeb(web.Helper):
 
         res = self.signin()
         assert self.html_title() in str(res.data), res
-        assert "Welcome back %s" % "John Doe" in str(res.data), res
+        assert f"Welcome back John Doe" in str(res.data), res
 
         # Check profile page with several information chunks
         res = self.profile()
@@ -1366,7 +1362,7 @@ class TestWeb(web.Helper):
 
         res = self.signin(next='%2Faccount%2Fprofile')
         assert self.html_title("Profile") in str(res.data), res
-        assert "Welcome back %s" % "John Doe" in str(res.data), res
+        assert f"Welcome back John Doe" in str(res.data), res
 
 
     @with_context
@@ -1389,7 +1385,7 @@ class TestWeb(web.Helper):
         self.create()
         self.signin(email=Fixtures.email_addr, password=Fixtures.password)
         self.new_project()
-        url = '/account/%s/applications' % Fixtures.name
+        url = f'/account/{Fixtures.name}/applications'
         res = self.app.get(url)
         assert "Projects" in str(res.data), res.data
         assert "Published" in str(res.data), res.data
@@ -1400,7 +1396,7 @@ class TestWeb(web.Helper):
         res = self.app.get(url)
         assert res.status_code == 404, res.status_code
 
-        url = '/account/%s/applications' % Fixtures.name2
+        url = f'/account/{Fixtures.name2}/applications'
         res = self.app.get(url)
         assert res.status_code == 403, res.status_code
 
@@ -1412,7 +1408,7 @@ class TestWeb(web.Helper):
         self.create()
         self.signin(email=Fixtures.email_addr, password=Fixtures.password)
         self.new_project()
-        url = '/account/%s/projects' % Fixtures.name
+        url = f'/account/{Fixtures.name}/projects'
         res = self.app.get(url)
         assert "Projects" in str(res.data), res.data
         assert "Published" in str(res.data), res.data
@@ -1423,7 +1419,7 @@ class TestWeb(web.Helper):
         res = self.app.get(url)
         assert res.status_code == 404, res.status_code
 
-        url = '/account/%s/projects' % Fixtures.name2
+        url = f'/account/{Fixtures.name2}/projects'
         res = self.app.get(url)
         assert res.status_code == 403, res.status_code
 
@@ -1435,7 +1431,7 @@ class TestWeb(web.Helper):
         self.create()
         self.signin(email=Fixtures.email_addr, password=Fixtures.password)
         self.new_project()
-        url = '/account/%s/projects' % Fixtures.name
+        url = f'/account/{Fixtures.name}/projects'
         res = self.app_get_json(url)
         data = json.loads(res.data)
         assert data['title'] == 'Projects', data
@@ -1451,7 +1447,7 @@ class TestWeb(web.Helper):
         res = self.app.get(url)
         assert res.status_code == 404, res.status_code
 
-        url = '/account/%s/projects' % Fixtures.name2
+        url = f'/account/{Fixtures.name2}/projects'
         res = self.app.get(url)
         assert res.status_code == 403, res.status_code
 
@@ -1471,7 +1467,7 @@ class TestWeb(web.Helper):
         # Update profile with new data
         res = self.update_profile(method="GET", content_type="application/json")
         data = json.loads(res.data)
-        msg = "Update your profile: %s" % "John Doe"
+        msg = 'Update your profile: John Doe'
         err_msg = "There should be a title"
         assert data['title'] == msg, err_msg
         err_msg = "There should be 3 forms"
@@ -1505,7 +1501,7 @@ class TestWeb(web.Helper):
         title = "Update your profile: John Doe 2"
         assert data.get('status') == SUCCESS, res.data
         user = user_repo.get_by(email_addr='johndoe2@example.com')
-        url = '/account/%s/update' % user.name
+        url = f'/account/{user.name}/update'
         assert data.get('next') == url, res.data
         flash = "Your profile has been updated!"
         err_msg = "There should be a flash message"
@@ -1586,7 +1582,7 @@ class TestWeb(web.Helper):
 
         # Update profile with new data
         res = self.update_profile(method="GET")
-        msg = "Update your profile: %s" % "John Doe"
+        msg = 'Update your profile: John Doe'
         assert self.html_title(msg) in str(res.data), res.data
         msg = 'input id="id" name="id" type="hidden" value="1"'
         assert msg in str(res.data), res
@@ -1690,29 +1686,29 @@ class TestWeb(web.Helper):
         user = UserFactory.create()
         project = ProjectFactory.create(short_name="algo", owner=owner)
         # As anon
-        url = '/project/%s/delete' % project.short_name
+        url = f'/project/{project.short_name}/delete'
         res = self.app_get_json(url, follow_redirects=True)
         assert 'signin' in str(res.data), res.data
 
-        url = '/project/%s/delete' % project.short_name
+        url = f'/project/{project.short_name}/delete'
         res = self.app_post_json(url)
         assert 'signin' in str(res.data), res.data
 
         # As not owner
-        url = '/project/%s/delete?api_key=%s' % (project.short_name, user.api_key)
+        url = f'/project/{project.short_name}/delete?api_key={user.api_key}'
         res = self.app_get_json(url, follow_redirects=True)
         data = json.loads(res.data)
         assert res.status_code == 403, data
         assert data['code'] == 403, data
 
-        url = '/project/%s/delete?api_key=%s' % (project.short_name, user.api_key)
+        url = f'/project/{project.short_name}/delete?api_key={user.api_key}'
         res = self.app_post_json(url, follow_redirects=True)
         data = json.loads(res.data)
         assert res.status_code == 403, data
         assert data['code'] == 403, data
 
         # As owner
-        url = '/project/%s/delete?api_key=%s' % (project.short_name, owner.api_key)
+        url = f'/project/{project.short_name}/delete?api_key={owner.api_key}'
         res = self.app_get_json(url, follow_redirects=True)
         data = json.loads(res.data)
         assert res.status_code == 200, data
@@ -1741,8 +1737,7 @@ class TestWeb(web.Helper):
         import io
         owner = UserFactory.create()
         project = ProjectFactory.create(owner=owner)
-        url = '/project/%s/update?api_key=%s' % (project.short_name,
-                                                 owner.api_key)
+        url = f'/project/{project.short_name}/update?api_key={owner.api_key}'
         avatar = (io.BytesIO(b'test'), 'test_file.jpg')
         payload = dict(btn='Upload', avatar=avatar,
                        id=project.id, x1=0, y1=0,
@@ -1753,7 +1748,8 @@ class TestWeb(web.Helper):
         p = project_repo.get(project.id)
         assert p.info['thumbnail'] is not None
         assert p.info['container'] is not None
-        thumbnail_url = 'https://localhost/uploads/%s/%s' % (p.info['container'], p.info['thumbnail'])
+        thumbnail_url = f"https://localhost/uploads/{p.info['container']}/{p.info['thumbnail']}"
+
         assert p.info['thumbnail_url'] == thumbnail_url
 
     @with_context
@@ -1761,8 +1757,7 @@ class TestWeb(web.Helper):
         """Test WEB Account upload avatar."""
         import io
         owner = UserFactory.create()
-        url = '/account/%s/update?api_key=%s' % (owner.name,
-                                                 owner.api_key)
+        url = f'/account/{owner.name}/update?api_key={owner.api_key}'
         avatar = (io.BytesIO(b'test'), 'test_file.jpg')
         payload = dict(btn='Upload', avatar=avatar,
                        id=owner.id, x1=0, y1=0,
@@ -1773,7 +1768,10 @@ class TestWeb(web.Helper):
         u = user_repo.get(owner.id)
         assert u.info['avatar'] is not None
         assert u.info['container'] is not None
-        avatar_url = 'https://localhost/uploads/%s/%s' % (u.info['container'], u.info['avatar'])
+        avatar_url = (
+            f"https://localhost/uploads/{u.info['container']}/{u.info['avatar']}"
+        )
+
         assert u.info['avatar_url'] == avatar_url, u.info['avatar_url']
 
     @with_context
@@ -1787,7 +1785,7 @@ class TestWeb(web.Helper):
         assert res.status == '404 NOT FOUND', res.status
         assert data['code'] == 404, data
         # POST
-        res = self.app_post_json(url, data=dict())
+        res = self.app_post_json(url, data={})
         assert res.status == '404 NOT FOUND', res.status
         data = json.loads(res.data)
         assert data['code'] == 404, data
@@ -1796,7 +1794,7 @@ class TestWeb(web.Helper):
     def test_get_project_json(self):
         """Test WEB JSON get project by short name."""
         project = ProjectFactory.create()
-        url = '/project/%s/' % project.short_name
+        url = f'/project/{project.short_name}/'
         res = self.app_get_json(url)
 
         data = json.loads(res.data)['project']
@@ -1832,16 +1830,14 @@ class TestWeb(web.Helper):
 
         project = ProjectFactory.create(owner=owner)
 
-        url = '/project/%s/update?api_key=%s' % (project.short_name, user.api_key)
+        url = f'/project/{project.short_name}/update?api_key={user.api_key}'
 
         res = self.app_get_json(url)
         data = json.loads(res.data)
 
         assert data['code'] == 403, data
 
-        old_data = dict()
-
-        old_data['description'] = 'foobar'
+        old_data = {'description': 'foobar'}
 
         res = self.app_post_json(url, data=old_data)
         data = json.loads(res.data)
@@ -1858,7 +1854,7 @@ class TestWeb(web.Helper):
 
         project = ProjectFactory.create(owner=owner)
 
-        url = '/project/%s/update?api_key=%s' % (project.short_name, admin.api_key)
+        url = f'/project/{project.short_name}/update?api_key={admin.api_key}'
 
         res = self.app_get_json(url)
         data = json.loads(res.data)
@@ -1891,7 +1887,7 @@ class TestWeb(web.Helper):
 
         project = ProjectFactory.create(owner=owner)
 
-        url = '/project/%s/update?api_key=%s' % (project.short_name, owner.api_key)
+        url = f'/project/{project.short_name}/update?api_key={owner.api_key}'
 
         res = self.app_get_json(url)
         data = json.loads(res.data)
@@ -1923,7 +1919,7 @@ class TestWeb(web.Helper):
 
         project = ProjectFactory.create(owner=owner)
 
-        url = '/project/%s/update?api_key=%s' % (project.short_name, owner.api_key)
+        url = f'/project/{project.short_name}/update?api_key={owner.api_key}'
 
         res = self.app_get_json(url)
         data = json.loads(res.data)

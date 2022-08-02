@@ -42,16 +42,19 @@ class TaskRunAuth(object):
         if (user.is_anonymous and
                 project.allow_anonymous_contributors is False):
             return False
-        authorized = self.task_repo.count_task_runs_with(
-            project_id=taskrun.project_id,
-            task_id=taskrun.task_id,
-            user_id=taskrun.user_id,
-            user_ip=taskrun.user_ip,
-            external_uid=taskrun.external_uid) <= 0
-
-        if not authorized:
+        if (
+            authorized := self.task_repo.count_task_runs_with(
+                project_id=taskrun.project_id,
+                task_id=taskrun.task_id,
+                user_id=taskrun.user_id,
+                user_ip=taskrun.user_ip,
+                external_uid=taskrun.external_uid,
+            )
+            <= 0
+        ):
+            return authorized
+        else:
             raise abort(403)
-        return authorized
 
     def _read(self, user, taskrun=None):
         return True

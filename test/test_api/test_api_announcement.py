@@ -45,17 +45,20 @@ class TestAnnouncementAPI(TestAPI):
         assert len(data) == 10, data
 
         # As user
-        res = self.app_get_json(url + '?api_key=' + user.api_key)
+        res = self.app_get_json(f'{url}?api_key={user.api_key}')
         data = json.loads(res.data)
         assert len(data) == 10, data
 
         # Valid field but wrong value
-        res = self.app.get(url + "?title=wrongvalue")
+        res = self.app.get(f"{url}?title=wrongvalue")
         data = json.loads(res.data)
         assert len(data) == 0, data
 
         # Multiple fields
-        res = self.app.get(url + '?title=' + announcement.title  + '&body=' + announcement.body)
+        res = self.app.get(
+            f'{url}?title={announcement.title}&body={announcement.body}'
+        )
+
         data = json.loads(res.data)
         # One result
         assert len(data) == 10, data
@@ -65,20 +68,20 @@ class TestAnnouncementAPI(TestAPI):
         assert data[0]['media_url'] == announcement.media_url, data
 
         # Limits
-        res = self.app.get(url + "?limit=1")
+        res = self.app.get(f"{url}?limit=1")
         data = json.loads(res.data)
         for item in data:
             assert item['title'] == announcement.title, item
         assert len(data) == 1, data
 
         # Keyset pagination
-        res = self.app.get(url + '?limit=1&last_id=' + str(announcements[8].id))
+        res = self.app.get(f'{url}?limit=1&last_id={str(announcements[8].id)}')
         data = json.loads(res.data)
         assert len(data) == 1, len(data)
         assert data[0]['id'] == announcement.id
 
         # Errors
-        res = self.app.get(url + "?something")
+        res = self.app.get(f"{url}?something")
         err = json.loads(res.data)
         err_msg = "AttributeError exception should be raised"
         res.status_code == 415, err_msg
@@ -130,14 +133,14 @@ class TestAnnouncementAPI(TestAPI):
         assert data['status_code'] == 401, data
 
         # As a user
-        url = '/api/announcement?api_key=%s' % user.api_key
+        url = f'/api/announcement?api_key={user.api_key}'
         res = self.app.post(url, data=json.dumps(payload))
         data = json.loads(res.data)
         assert res.status_code == 403, data
         assert data['status_code'] == 403, data
 
         # As admin
-        url = '/api/announcement?api_key=%s' % admin.api_key
+        url = f'/api/announcement?api_key={admin.api_key}'
         res = self.app.post(url, data=json.dumps(payload))
         data = json.loads(res.data)
         assert res.status_code == 200, data
@@ -154,7 +157,7 @@ class TestAnnouncementAPI(TestAPI):
         # As anon
         announcement.title = 'new'
         announcement.body = 'new body'
-        url = '/api/announcement/%s' % announcement.id
+        url = f'/api/announcement/{announcement.id}'
         res = self.app.put(url, data=json.dumps(announcement.dictize()))
         data = json.loads(res.data)
         assert res.status_code == 401, res.status_code
@@ -162,7 +165,7 @@ class TestAnnouncementAPI(TestAPI):
         # As user
         announcement.title = 'new'
         announcement.body = 'new body'
-        url = '/api/announcement/%s?api_key=%s' % (announcement.id, user.api_key)
+        url = f'/api/announcement/{announcement.id}?api_key={user.api_key}'
         data = announcement.dictize()
         del data['id']
         del data['created']
@@ -177,7 +180,7 @@ class TestAnnouncementAPI(TestAPI):
         # As admin
         announcement.title = 'new'
         announcement.body = 'new body'
-        url = '/api/announcement/%s?api_key=%s' % (announcement.id, admin.api_key)
+        url = f'/api/announcement/{announcement.id}?api_key={admin.api_key}'
         payload = announcement.dictize()
         del payload['user_id']
         del payload['created']
@@ -204,18 +207,18 @@ class TestAnnouncementAPI(TestAPI):
         announcement2 = AnnouncementFactory.create()
 
         # As anon
-        url = '/api/announcement/%s' % announcement.id
+        url = f'/api/announcement/{announcement.id}'
         res = self.app.delete(url)
         data = json.loads(res.data)
         assert res.status_code == 401, res.status_code
 
         # As user
-        url = '/api/announcement/%s?api_key=%s' % (announcement.id, user.api_key)
+        url = f'/api/announcement/{announcement.id}?api_key={user.api_key}'
         res = self.app.delete(url)
         assert res.status_code == 403, res.status_code
 
         # As admin
-        url = '/api/announcement/%s?api_key=%s' % (announcement2.id, admin.api_key)
+        url = f'/api/announcement/{announcement2.id}?api_key={admin.api_key}'
         res = self.app.delete(url)
         assert res.status_code == 204, res.status_code
 
@@ -245,12 +248,12 @@ class TestAnnouncementAPI(TestAPI):
                        title='title',
                        body='body')
 
-        url = '/api/announcement?api_key=%s' % admin.api_key
+        url = f'/api/announcement?api_key={admin.api_key}'
         res = self.app.post(url, data=payload,
                             content_type="multipart/form-data")
         data = json.loads(res.data)
         assert res.status_code == 200, data
-        container = "user_%s" % admin.id
+        container = f"user_{admin.id}"
         assert data['info']['container'] == container, data
         assert data['info']['file_name'] == 'test_file.jpg', data
         assert 'test_file.jpg' in data['media_url'], data
@@ -260,7 +263,7 @@ class TestAnnouncementAPI(TestAPI):
 
         payload = dict(file=img)
 
-        url = '/api/announcement?api_key=%s' % user.api_key
+        url = f'/api/announcement?api_key={user.api_key}'
         res = self.app.post(url, data=payload,
                             content_type="multipart/form-data")
         data = json.loads(res.data)
@@ -278,7 +281,7 @@ class TestAnnouncementAPI(TestAPI):
         payload = dict(file=img)
 
         # As anon
-        url = '/api/announcement/%s' % announcement.id
+        url = f'/api/announcement/{announcement.id}'
         res = self.app.put(url, data=payload,
                            content_type="multipart/form-data")
         data = json.loads(res.data)
@@ -290,7 +293,7 @@ class TestAnnouncementAPI(TestAPI):
 
         payload = dict(file=img)
 
-        url = '/api/announcement/%s?api_key=%s' % (announcement.id, user.api_key)
+        url = f'/api/announcement/{announcement.id}?api_key={user.api_key}'
         res = self.app.put(url, data=payload,
                            content_type="multipart/form-data")
         data = json.loads(res.data)
@@ -302,13 +305,12 @@ class TestAnnouncementAPI(TestAPI):
 
         payload = dict(file=img)
 
-        url = '/api/announcement/%s?api_key=%s' % (announcement.id,
-                                                   admin.api_key)
+        url = f'/api/announcement/{announcement.id}?api_key={admin.api_key}'
         res = self.app.put(url, data=payload,
                            content_type="multipart/form-data")
         data = json.loads(res.data)
         assert res.status_code == 200, data
-        container = "user_%s" % admin.id
+        container = f"user_{admin.id}"
         assert data['info']['container'] == container, data
         assert data['info']['file_name'] == 'test_file.jpg', data
         assert 'test_file.jpg' in data['media_url'], data

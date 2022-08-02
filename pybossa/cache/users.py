@@ -57,7 +57,7 @@ def get_user_summary(name, current_user=None):
                GROUP BY "user".id;
                ''')
     results = session.execute(sql, dict(name=name))
-    user = dict()
+    user = {}
     for row in results:
         user = dict(id=row.id, name=row.name, fullname=row.fullname,
                     created=row.created, api_key=row.api_key,
@@ -68,22 +68,25 @@ def get_user_summary(name, current_user=None):
                     confirmation_email_sent=row.confirmation_email_sent,
                     restrict=row.restrict,
                     registered_ago=pretty_date(row.created))
-    if user:
-        rank_score = rank_and_score(user['id'])
-        user['rank'] = rank_score['rank']
-        user['score'] = rank_score['score']
-        user['total'] = get_total_users()
-        if user['restrict']:
-            if (current_user and
-                current_user.is_authenticated and
-               (current_user.id == user['id'])):
-                return user
-            else:
-                return None
-        else:
-            return user
-    else:  # pragma: no cover
+    if not user:
         return None
+    rank_score = rank_and_score(user['id'])
+    user['rank'] = rank_score['rank']
+    user['score'] = rank_score['score']
+    user['total'] = get_total_users()
+    if user['restrict']:
+        return (
+            user
+            if (
+                current_user
+                and current_user.is_authenticated
+                and (current_user.id == user['id'])
+            )
+            else None
+        )
+
+    else:
+        return user
 
 
 @memoize(timeout=timeouts.get('USER_TIMEOUT'))
@@ -288,13 +291,19 @@ def get_project_report_userdata(project_id):
             (SELECT DISTINCT user_id FROM task_run tr GROUP BY project_id, user_id HAVING project_id=:project_id);
             ''')
     results = session.execute(sql, dict(project_id=project_id, total_tasks=total_tasks))
-    users_report = [
-        [row.u_id, row.name, row.fullname,
-         row.completed_tasks, row.percent_completed_tasks,
-         row.first_submission_date, row.last_submission_date,
-         round(row.avg_time_per_task.total_seconds() / 60, 2)]
-         for row in results]
-    return users_report
+    return [
+        [
+            row.u_id,
+            row.name,
+            row.fullname,
+            row.completed_tasks,
+            row.percent_completed_tasks,
+            row.first_submission_date,
+            row.last_submission_date,
+            round(row.avg_time_per_task.total_seconds() / 60, 2),
+        ]
+        for row in results
+    ]
 
 
 @memoize(timeout=timeouts.get('APP_TIMEOUT'))

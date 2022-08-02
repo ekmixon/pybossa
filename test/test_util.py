@@ -72,7 +72,7 @@ class TestPybossaUtil(Test):
         with patch.dict(self.flask_app.config, patch_dict):
             message, timestamp, sig, pub_key = util.get_disqus_sso_payload(user)
             mock_b64encode.assert_called_with(data.encode('utf-8'))
-            tmp = '{} {}'.format(data, timestamp)
+            tmp = f'{data} {timestamp}'
             mock_hmac.assert_called_with(DISQUS_SECRET_KEY.encode('utf-8'), tmp.encode('utf-8'),
                                          hashlib.sha1)
             assert timestamp
@@ -110,7 +110,7 @@ class TestPybossaUtil(Test):
         with patch.dict(self.flask_app.config, patch_dict):
             message, timestamp, sig, pub_key = util.get_disqus_sso_payload(None)
             mock_b64encode.assert_called_with(data.encode('utf-8'))
-            tmp = '{} {}'.format(data, timestamp)
+            tmp = f'{data} {timestamp}'
             mock_hmac.assert_called_with(DISQUS_SECRET_KEY.encode('utf-8'),
                                          tmp.encode('utf-8'),
                                          hashlib.sha1)
@@ -508,7 +508,7 @@ class TestPybossaUtil(Test):
         assert p.has_next is False, err_msg
 
         for i in p.iter_pages():
-            err_msg = "It should return the page: %s" % page
+            err_msg = f"It should return the page: {page}"
             assert i == page, err_msg
             page += 1
 
@@ -602,7 +602,7 @@ class TestWithCacheDisabledDecorator(object):
 
     def test_it_returns_same_as_original_function(self):
         def original_func(first_value, second_value='world'):
-            return 'first_value' + second_value
+            return f'first_value{second_value}'
 
         decorated_func = util.with_cache_disabled(original_func)
         call_with_args = decorated_func('Hello, ')
@@ -628,7 +628,7 @@ class TestWithCacheDisabledDecorator(object):
         del os.environ['PYBOSSA_REDIS_CACHE_DISABLED']
         decorated_func = util.with_cache_disabled(original_func)
 
-        assert original_func() == None, original_func()
+        assert original_func() is None, original_func()
         assert decorated_func() == '1', decorated_func()
 
     def test_it_leaves_environment_as_it_was_before(self):

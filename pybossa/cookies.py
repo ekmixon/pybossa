@@ -30,7 +30,7 @@ class CookieHandler(object):
 
     def _create_or_update_cookie(self, project, user):
         """Create or update cookie."""
-        cookie_name = '%spswd' % project.short_name
+        cookie_name = f'{project.short_name}pswd'
         cookie = self.request.cookies.get(cookie_name)
         cookie = self.signer.loads(cookie) if cookie else []
         cookie.append(user)
@@ -39,14 +39,13 @@ class CookieHandler(object):
 
     def add_cookie_to(self, response, project, user):
         """Add cookie to response."""
-        cookie_name = '%spswd' % project.short_name
+        cookie_name = f'{project.short_name}pswd'
         cookie = self._create_or_update_cookie(project, user)
         response.set_cookie(cookie_name, cookie, max_age=self.expiration)
         return response
 
     def get_cookie_from(self, project):
         """Get cookie from a project."""
-        cookie_name = '%spswd' % project.short_name
+        cookie_name = f'{project.short_name}pswd'
         signed_cookie = self.request.cookies.get(cookie_name)
-        cookie = self.signer.loads(signed_cookie) if signed_cookie else []
-        return cookie
+        return self.signer.loads(signed_cookie) if signed_cookie else []

@@ -18,7 +18,7 @@ class TestProjectReport(web.Helper):
         self.signout()
         self.register(fullname='Juan', name='juan', password='juana')
         self.signin(email="juan@example.com", password='juana')
-        url = '/project/%s/projectreport/export' % project.short_name
+        url = f'/project/{project.short_name}/projectreport/export'
         res = self.app.get(url, follow_redirects=True)
         assert res.status_code == 403, res.data
 
@@ -28,7 +28,7 @@ class TestProjectReport(web.Helper):
         self.register()
         user = user_repo.get(1)
         project = ProjectFactory.create(owner=user)
-        url = '/project/%s/projectreport/export' % project.short_name
+        url = f'/project/{project.short_name}/projectreport/export'
         res = self.app.get(url, follow_redirects=True)
         assert res.status_code == 200, res.data
 
@@ -38,7 +38,7 @@ class TestProjectReport(web.Helper):
         self.register()
         user = user_repo.get(1)
         project = ProjectFactory.create(owner=user)
-        url = '/project/%s/projectreport/export?badparam=badval' % project.short_name
+        url = f'/project/{project.short_name}/projectreport/export?badparam=badval'
         res = self.app.get(url, follow_redirects=True)
         assert res.status_code == 404, res.data
 
@@ -48,7 +48,8 @@ class TestProjectReport(web.Helper):
         self.register()
         user = user_repo.get(1)
         project = ProjectFactory.create(owner=user)
-        url = '/project/%s/projectreport/export?type=badtype&format=csv' % project.short_name
+        url = f'/project/{project.short_name}/projectreport/export?type=badtype&format=csv'
+
         res = self.app.get(url, follow_redirects=True)
         assert res.status_code == 404, res.data
 
@@ -58,7 +59,8 @@ class TestProjectReport(web.Helper):
         self.register()
         user = user_repo.get(1)
         project = ProjectFactory.create(owner=user)
-        url = '/project/%s/projectreport/export?type=project&format=badfmt' % project.short_name
+        url = f'/project/{project.short_name}/projectreport/export?type=project&format=badfmt'
+
         res = self.app.get(url, follow_redirects=True)
         assert res.status_code == 415, res.data
 
@@ -68,7 +70,8 @@ class TestProjectReport(web.Helper):
         self.register()
         user = user_repo.get(1)
         project = ProjectFactory.create(owner=user)
-        url = '/project/%s/projectreport/export?type=project&format=csv' % project.short_name
+        url = f'/project/{project.short_name}/projectreport/export?type=project&format=csv'
+
         res = self.app.get(url, follow_redirects=True)
         assert res.status_code == 200, res.status_code
 
@@ -83,7 +86,8 @@ class TestProjectReport(web.Helper):
         project = ProjectFactory.create(owner=owner)
         task = TaskFactory.create(project=project)
         TaskRunFactory.create(task=task)
-        url = '/project/%s/projectreport/export?type=project&format=csv' % project.short_name
+        url = f'/project/{project.short_name}/projectreport/export?type=project&format=csv'
+
         res = self.app_get_json(url, follow_redirects=True)
         print(res)
 
@@ -94,7 +98,8 @@ class TestProjectReport(web.Helper):
         self.register()
         user = user_repo.get(1)
         project = ProjectFactory.create(owner=user)
-        url = '/project/%s/projectreport/export?type=project&format=csv' % project.short_name
+        url = f'/project/{project.short_name}/projectreport/export?type=project&format=csv'
+
         res = self.app.get(url, follow_redirects=True)
 
     @with_context
@@ -104,6 +109,7 @@ class TestProjectReport(web.Helper):
         self.register()
         user = user_repo.get(1)
         project = ProjectFactory.create(owner=user)
-        url = '/project/%s/projectreport/export?type=project&format=csv' % project.short_name
+        url = f'/project/{project.short_name}/projectreport/export?type=project&format=csv'
+
         res = self.app.get(url, follow_redirects=True)
         assert res.status_code == 500, res.data

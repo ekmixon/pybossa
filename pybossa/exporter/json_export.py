@@ -50,12 +50,11 @@ class JsonExporter(Exporter):
             return self.handle_zip(name, data, ty,
                                    user_id, project,
                                    'json', zipname)
-        else:
-            name = self._project_name_latin_encoded(project)
-            json_task_generator = self._respond_json(ty, project.id)
-            if json_task_generator is not None:
-                return self.handle_zip(name, json_task_generator,
-                                       ty, user_id, project, 'json', zipname)
+        name = self._project_name_latin_encoded(project)
+        json_task_generator = self._respond_json(ty, project.id)
+        if json_task_generator is not None:
+            return self.handle_zip(name, json_task_generator,
+                                   ty, user_id, project, 'json', zipname)
 
     def download_name(self, project, ty):
         return super(JsonExporter, self).download_name(project, ty, 'json')
@@ -74,8 +73,7 @@ class JsonExporter(Exporter):
             try:
                 datafile.write(json.dumps(data))
                 datafile.flush()
-                _zip.write(datafile.name,
-                           secure_filename('%s_%s.%s' % (name, ty, ext)))
+                _zip.write(datafile.name, secure_filename(f'{name}_{ty}.{ext}'))
             finally:
                 datafile.close()
         finally:
@@ -83,9 +81,9 @@ class JsonExporter(Exporter):
             if user_id:
                 container = "user_%d" % user_id
                 if zipname is None:
-                    zipname = "user_%s.zip" % user_id
+                    zipname = f"user_{user_id}.zip"
                 else:
-                    zipname = "%s_sec_%s" % (uuid.uuid1(), zipname)
+                    zipname = f"{uuid.uuid1()}_sec_{zipname}"
                 _file = FileStorage(filename=zipname,
                                     stream=zipped_datafile)
             else:

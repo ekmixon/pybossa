@@ -55,7 +55,7 @@ class TaskRepository(Repository):
         query = self.db.session.query(Task).filter(Task.fav_user_ids.any(uid))
         limit = filters.get('limit', 20)
         offset = filters.get('offset', 0)
-        last_id = filters.get('last_id', None)
+        last_id = filters.get('last_id')
         desc = filters.get('desc', False)
         orderby = filters.get('orderby', 'id')
         if last_id:
@@ -67,11 +67,11 @@ class TaskRepository(Repository):
 
     def get_task_favorited(self, uid, task_id):
         """Return task marked as favorited by user.id."""
-        tasks = self.db.session.query(Task)\
-                    .filter(Task.fav_user_ids.any(uid), 
-                            Task.id==task_id)\
-                    .all()
-        return tasks
+        return (
+            self.db.session.query(Task)
+            .filter(Task.fav_user_ids.any(uid), Task.id == task_id)
+            .all()
+        )
 
     # Methods for queries on TaskRun objects
     def get_task_run(self, id):
@@ -172,7 +172,7 @@ class TaskRepository(Repository):
     def _validate_can_be(self, action, element):
         if not isinstance(element, Task) and not isinstance(element, TaskRun):
             name = element.__class__.__name__
-            msg = '%s cannot be %s by %s' % (name, action, self.__class__.__name__)
+            msg = f'{name} cannot be {action} by {self.__class__.__name__}'
             raise WrongObjectError(msg)
 
     def _delete(self, element):
@@ -190,7 +190,7 @@ class TaskRepository(Repository):
         csv_tasks_filename = csv_exporter.download_name(project, 'task')
         json_taskruns_filename = json_exporter.download_name(project, 'task_run')
         csv_taskruns_filename = csv_exporter.download_name(project, 'task_run')
-        container = "user_%s" % project.owner_id
+        container = f"user_{project.owner_id}"
         uploader.delete_file(json_tasks_filename, container)
         uploader.delete_file(csv_tasks_filename, container)
         uploader.delete_file(json_taskruns_filename, container)

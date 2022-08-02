@@ -38,10 +38,7 @@ class Unique(object):
         filters = {self.field_name: form_field.data}
         check = self.query_function(**filters)
         if 'id' in form:
-            if check:
-                id = type(check.id)((form.id.data))
-            else:
-                id = int(form.id.data)
+            id = type(check.id)((form.id.data)) if check else int(form.id.data)
         else:
             id = None
         if check and (id is None or id != check.id):
@@ -53,16 +50,13 @@ class NotAllowedChars(object):
     not_valid_chars = '$#&\/| '
 
     def __init__(self, message=None):
-        if not message:
-            self.message = lazy_gettext('%sand space symbols are forbidden'
-                                        % self.not_valid_chars)
-        else:  # pragma: no cover
-            self.message = message
+        self.message = message or lazy_gettext(
+            f'{self.not_valid_chars}and space symbols are forbidden'
+        )
 
     def __call__(self, form, field):
-        if field.data:
-            if any(c in field.data for c in self.not_valid_chars):
-                raise ValidationError(self.message)
+        if field.data and any(c in field.data for c in self.not_valid_chars):
+            raise ValidationError(self.message)
 
 
 class CommaSeparatedIntegers(object):
@@ -70,11 +64,9 @@ class CommaSeparatedIntegers(object):
     not_valid_chars = '$#&\/| '
 
     def __init__(self, message=None):
-        if not message:
-            self.message = lazy_gettext('Only comma separated values are allowed, no spaces')
-
-        else:  # pragma: no cover
-            self.message = message
+        self.message = message or lazy_gettext(
+            'Only comma separated values are allowed, no spaces'
+        )
 
     def __call__(self, form, field):
         pattern = re.compile('^[\d,]+$')
@@ -86,11 +78,7 @@ class Webhook(object):
     """Validator for webhook URLs"""
 
     def __init__(self, message=None):
-        if not message:
-            self.message = lazy_gettext('Invalid URL')
-
-        else:  # pragma: no cover
-            self.message = message
+        self.message = message or lazy_gettext('Invalid URL')
 
     def __call__(self, form, field):
         try:
@@ -131,12 +119,9 @@ class CheckPasswordStrength(object):
         self.numeric = numeric
         self.special = special
 
-        if message:
-            self.message = message
-        else:
-            self.message = self._get_message(
-                                    uppercase, lowercase,
-                                    numeric, special)
+        self.message = message or self._get_message(
+            uppercase, lowercase, numeric, special
+        )
 
     def __call__(self, form, field):
         pwd = field.data
@@ -160,8 +145,7 @@ class CheckPasswordStrength(object):
             message.append('one special !@$%^&*#')
 
         if message:
-            return 'Password must contain at least {} character.'\
-                .format(', '.join(message))
+            return f"Password must contain at least {', '.join(message)} character."
         return None
 
 

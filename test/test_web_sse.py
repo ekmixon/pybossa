@@ -31,7 +31,7 @@ class TestWebSse(web.Helper):
     def test_stream_uri_private_anon(self):
         """Test stream URI private anon works."""
         project = ProjectFactory.create()
-        private_uri = '/project/%s/privatestream' % project.short_name
+        private_uri = f'/project/{project.short_name}/privatestream'
         res = self.app.get(private_uri, follow_redirects=True)
         assert res.status_code == 200, res.status_code
         assert 'Please sign in to access this page' in str(res.data), res.data
@@ -44,7 +44,7 @@ class TestWebSse(web.Helper):
         project = ProjectFactory.create(owner=user)
         self.signout()
         self.register(fullname='Juan', name='juan', password='juana')
-        private_uri = '/project/%s/privatestream' % project.short_name
+        private_uri = f'/project/{project.short_name}/privatestream'
         res = self.app.get(private_uri, follow_redirects=True)
         assert res.status_code == 403, res.data
 
@@ -57,7 +57,7 @@ class TestWebSse(web.Helper):
         self.register()
         user = user_repo.get(1)
         project = ProjectFactory.create(owner=user)
-        private_uri = '/project/%s/privatestream' % project.short_name
+        private_uri = f'/project/{project.short_name}/privatestream'
         self.app.get(private_uri, follow_redirects=True)
         assert mock_sse.called
         assert mock_sse.called_once_with(project.short_name, 'private')
@@ -69,7 +69,7 @@ class TestWebSse(web.Helper):
         self.register()
         user = user_repo.get(1)
         project = ProjectFactory.create(owner=user)
-        private_uri = '/project/%s/privatestream' % project.short_name
+        private_uri = f'/project/{project.short_name}/privatestream'
         with patch.dict(self.flask_app.config, {'SSE': False}):
             res = self.app.get(private_uri, follow_redirects=True)
             assert res.status_code == 404
@@ -86,7 +86,7 @@ class TestWebSse(web.Helper):
         self.register(fullname="name", name="name")
         user = user_repo.get(2)
         project = ProjectFactory.create(owner=user)
-        private_uri = '/project/%s/privatestream' % project.short_name
+        private_uri = f'/project/{project.short_name}/privatestream'
         self.signout()
         # Sign in as admin
         self.signin()
@@ -106,7 +106,7 @@ class TestWebSse(web.Helper):
             self.register(fullname="name", name="name")
             user = user_repo.get(2)
             project = ProjectFactory.create(owner=user)
-            private_uri = '/project/%s/privatestream' % project.short_name
+            private_uri = f'/project/{project.short_name}/privatestream'
             self.signout()
             # Sign in as admin
             self.signin()
@@ -125,7 +125,7 @@ class TestWebSse(web.Helper):
         self.register(fullname="name", name="name")
         user = user_repo.get(2)
         project = ProjectFactory.create(owner=user)
-        private_uri = '/project/%s/publicstream' % project.short_name
+        private_uri = f'/project/{project.short_name}/publicstream'
         self.signout()
         # Sign in as admin
         self.signin()
@@ -144,7 +144,7 @@ class TestWebSse(web.Helper):
         self.register()
         user = user_repo.get(1)
         project = ProjectFactory.create(owner=user)
-        private_uri = '/project/%s/publicstream' % project.short_name
+        private_uri = f'/project/{project.short_name}/publicstream'
         self.app.get(private_uri, follow_redirects=True)
         assert mock_sse.called
         assert mock_sse.called_once_with(project.short_name, 'public')
@@ -156,7 +156,7 @@ class TestWebSse(web.Helper):
         """Test stream URI public anon works."""
         mock_sse.return_value = self.fake_sse_response
         project = ProjectFactory.create()
-        private_uri = '/project/%s/publicstream' % project.short_name
+        private_uri = f'/project/{project.short_name}/publicstream'
         self.app.get(private_uri, follow_redirects=True)
         assert mock_sse.called
         assert mock_sse.called_once_with(project.short_name, 'public')
@@ -165,7 +165,7 @@ class TestWebSse(web.Helper):
     def test_stream_uri_public_404(self, ):
         """Test stream URI public 404 when SSE disabled works."""
         project = ProjectFactory.create()
-        private_uri = '/project/%s/publicstream' % project.short_name
+        private_uri = f'/project/{project.short_name}/publicstream'
         with patch.dict(self.flask_app.config, {'SSE': False}):
             res = self.app.get(private_uri, follow_redirects=True)
             assert res.status_code == 404
@@ -184,7 +184,7 @@ class TestWebSse(web.Helper):
         project = ProjectFactory.create(owner=user)
         self.signout()
         self.register(fullname="name2", name="name2")
-        private_uri = '/project/%s/publicstream' % project.short_name
+        private_uri = f'/project/{project.short_name}/publicstream'
         res = self.app.get(private_uri, follow_redirects=True)
         assert mock_sse.called
         assert mock_sse.called_once_with(project.short_name, 'public')

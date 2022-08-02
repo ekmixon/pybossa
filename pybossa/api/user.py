@@ -84,11 +84,13 @@ class UserAPI(APIBase):
         return filters
 
     def _private_attributes_in_request(self):
-        for attribute in list(request.args.keys()):
-            if (attribute in self.allowed_attributes and
-                    attribute not in self.public_attributes):
-                return True
-        return False
+        return any(
+            (
+                attribute in self.allowed_attributes
+                and attribute not in self.public_attributes
+            )
+            for attribute in list(request.args.keys())
+        )
 
     @jsonpify
     @ratelimit(limit=ratelimits.get('LIMIT'), per=ratelimits.get('PER'))

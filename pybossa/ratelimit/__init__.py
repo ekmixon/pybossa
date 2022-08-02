@@ -82,7 +82,7 @@ def ratelimit(limit, per, send_x_headers=True,
         @wraps(f)
         def rate_limited(*args, **kwargs):
             try:
-                key = 'rate-limit/%s/%s/' % (key_func(), scope_func())
+                key = f'rate-limit/{key_func()}/{scope_func()}/'
                 rlimit = RateLimit(key, limit, per, send_x_headers)
                 g._view_rate_limit = rlimit
                 # if over_limit is not None and rlimit.over_limit:
@@ -92,5 +92,7 @@ def ratelimit(limit, per, send_x_headers=True,
             except Exception as e:
                 return error.format_exception(e, target=path(),
                                               action=f.__name__)
+
         return update_wrapper(rate_limited, f)
+
     return decorator

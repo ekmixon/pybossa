@@ -39,9 +39,8 @@ def schedule_job(function, scheduler):
             sj.args == function['args'] and
                 sj.kwargs == function['kwargs']):
             sj.cancel()
-            msg = ('WARNING: Job %s(%s, %s) is already scheduled'
-                   % (function['name'].__name__, function['args'],
-                      function['kwargs']))
+            msg = f"WARNING: Job {function['name'].__name__}({function['args']}, {function['kwargs']}) is already scheduled"
+
             return msg
     # If job was scheduled, it exists up here, else it continues
     job = scheduler.schedule(
@@ -53,18 +52,17 @@ def schedule_job(function, scheduler):
         repeat=None,
         timeout=function['timeout'])
 
-    msg = ('Scheduled %s(%s, %s) to run every %s seconds'
-           % (function['name'].__name__, function['args'], function['kwargs'],
-              function['interval']))
+    msg = f"Scheduled {function['name'].__name__}({function['args']}, {function['kwargs']}) to run every {function['interval']} seconds"
+
     return msg
 
 
 def get_quarterly_date(now):
     """Get quarterly date."""
     if not isinstance(now, datetime):
-        raise TypeError('Expected %s, got %s' % (type(datetime), type(now)))
+        raise TypeError(f'Expected {type(datetime)}, got {type(now)}')
     execute_month = int(math.ceil(now.month / 3.0) * 3)
-    execute_day = 31 if execute_month in [3, 12] else 30
+    execute_day = 31 if execute_month in {3, 12} else 30
     execute_date = datetime(now.year, execute_month, execute_day)
     return datetime.combine(execute_date, now.time())
 
@@ -97,8 +95,7 @@ def enqueue_periodic_jobs(queue_name):
                                args=job['args'],
                                kwargs=job['kwargs'],
                                timeout=job['timeout'])
-    msg = "%s jobs in %s have been enqueued" % (n_jobs, queue_name)
-    return msg
+    return f"{n_jobs} jobs in {queue_name} have been enqueued"
 
 
 def get_periodic_jobs(queue):
@@ -168,11 +165,13 @@ def get_export_task_jobs(queue):
         projects = (p.dictize() for p in project_repo.filter_by(published=True))
     for project in projects:
         project_id = project.get('id')
-        job = dict(name=project_export,
-                   args=[project_id], kwargs={},
-                   timeout=timeout,
-                   queue=queue)
-        yield job
+        yield dict(
+            name=project_export,
+            args=[project_id],
+            kwargs={},
+            timeout=timeout,
+            queue=queue,
+        )
 
 
 def project_export(_id):
@@ -200,21 +199,25 @@ def get_project_jobs(queue):
     for project in projects:
         project_id = project.get('id')
         project_short_name = project.get('short_name')
-        job = dict(name=get_project_stats,
-                   args=[project_id, project_short_name], kwargs={},
-                   timeout=timeout,
-                   queue=queue)
-        yield job
+        yield dict(
+            name=get_project_stats,
+            args=[project_id, project_short_name],
+            kwargs={},
+            timeout=timeout,
+            queue=queue,
+        )
 
 
 def create_dict_jobs(data, function, timeout, queue='low'):
     """Create a dict job."""
     for d in data:
-        jobs = dict(name=function,
-                    args=[d['id'], d['short_name']], kwargs={},
-                    timeout=timeout,
-                    queue=queue)
-        yield jobs
+        yield dict(
+            name=function,
+            args=[d['id'], d['short_name']],
+            kwargs={},
+            timeout=timeout,
+            queue=queue,
+        )
 
 
 def get_inactive_users_jobs(queue='quaterly'):
@@ -251,12 +254,13 @@ def get_inactive_users_jobs(queue='quaterly'):
                              body=body,
                              html=html)
 
-            job = dict(name=send_mail,
-                       args=[mail_dict],
-                       kwargs={},
-                       timeout=timeout,
-                       queue=queue)
-            yield job
+            yield dict(
+                name=send_mail,
+                args=[mail_dict],
+                kwargs={},
+                timeout=timeout,
+                queue=queue,
+            )
 
 
 def get_dashboard_jobs(queue='low'):  # pragma: no cover
@@ -282,11 +286,10 @@ def get_dashboard_jobs(queue='low'):  # pragma: no cover
                timeout=timeout, queue=queue)
 
 
-def get_leaderboard_jobs(queue='super'):  # pragma: no cover
+def get_leaderboard_jobs(queue='super'):    # pragma: no cover
     """Return leaderboard jobs."""
     timeout = current_app.config.get('TIMEOUT')
-    leaderboards = current_app.config.get('LEADERBOARDS')
-    if leaderboards:
+    if leaderboards := current_app.config.get('LEADERBOARDS'):
         for leaderboard_key in leaderboards:
             yield dict(name=leaderboard, args=[], kwargs={'info': leaderboard_key},
                        timeout=timeout, queue=queue)
@@ -321,12 +324,13 @@ def get_non_contributors_users_jobs(queue='quaterly'):
                              body=body,
                              html=html)
 
-            job = dict(name=send_mail,
-                       args=[mail_dict],
-                       kwargs={},
-                       timeout=timeout,
-                       queue=queue)
-            yield job
+            yield dict(
+                name=send_mail,
+                args=[mail_dict],
+                kwargs={},
+                timeout=timeout,
+                queue=queue,
+            )
 
 
 def get_autoimport_jobs(queue='low'):
@@ -345,12 +349,13 @@ def get_autoimport_jobs(queue='low'):
     for project_dict in projects:
         project = project_repo.get(project_dict['id'])
         if project.has_autoimporter():
-            job = dict(name=import_tasks,
-                       args=[project.id, True],
-                       kwargs=project.get_autoimporter(),
-                       timeout=timeout,
-                       queue=queue)
-            yield job
+            yield dict(
+                name=import_tasks,
+                args=[project.id, True],
+                kwargs=project.get_autoimporter(),
+                timeout=timeout,
+                queue=queue,
+            )
 
 
 # The following are the actual jobs (i.e. tasks performed in the background)
@@ -478,8 +483,8 @@ def warn_old_project_owners():
     with mail.connect() as conn:
         for project in projects:
             if (project.owner.consent and project.owner.subscribed):
-                subject = ('Your %s project: %s has been inactive'
-                           % (current_app.config.get('BRAND'), project.name))
+                subject = f"Your {current_app.config.get('BRAND')} project: {project.name} has been inactive"
+
                 body = render_template('/account/email/inactive_project.md',
                                        project=project)
                 html = render_template('/account/email/inactive_project.html',
@@ -530,8 +535,8 @@ def import_tasks(project_id, from_auto=False, **form_data):
         form_data['last_import_meta'] = report.metadata
         project.set_autoimporter(form_data)
         project_repo.save(project)
-    msg = report.message + ' to your project %s!' % project.name
-    subject = 'Tasks Import to your project %s' % project.name
+    msg = report.message + f' to your project {project.name}!'
+    subject = f'Tasks Import to your project {project.name}'
     body = 'Hello,\n\n' + msg + '\n\nAll the best,\nThe %s team.'\
         % current_app.config.get('BRAND')
     mail_dict = dict(recipients=[project.owner.email_addr],
@@ -554,17 +559,16 @@ def webhook(url, payload=None, oid=None, rerun=False):
         else:
             webhook = Webhook(project_id=payload['project_id'],
                               payload=payload)
-        if url:
-            params = dict()
-            if rerun:
-                params['rerun'] = True
-            response = requests.post(url, params=params,
-                                     data=json.dumps(payload),
-                                     headers=headers)
-            webhook.response = Document(response.text).summary()
-            webhook.response_status_code = response.status_code
-        else:
+        if not url:
             raise requests.exceptions.ConnectionError('Not URL')
+        params = {}
+        if rerun:
+            params['rerun'] = True
+        response = requests.post(url, params=params,
+                                 data=json.dumps(payload),
+                                 headers=headers)
+        webhook.response = Document(response.text).summary()
+        webhook.response_status_code = response.status_code
         if oid:
             webhook_repo.update(webhook)
             webhook = webhook_repo.get(oid)
@@ -576,7 +580,7 @@ def webhook(url, payload=None, oid=None, rerun=False):
         webhook_repo.save(webhook)
     finally:
         if project.published and webhook.response_status_code != 200 and current_app.config.get('ADMINS'):
-            subject = "Broken: %s webhook failed" % project.name
+            subject = f"Broken: {project.name} webhook failed"
             body = 'Sorry, but the webhook failed'
             mail_dict = dict(recipients=current_app.config.get('ADMINS'),
                              subject=subject, body=body, html=webhook.response)
@@ -611,8 +615,8 @@ def notify_blog_users(blog_id, project_id, queue='high'):
                    ''')
         results = db.slave_session.execute(sql, dict(project_id=project_id))
         for row in results:
-            subject = "Project Update: %s by %s" % (blog.project.name,
-                                                    blog.project.owner.fullname)
+            subject = f"Project Update: {blog.project.name} by {blog.project.owner.fullname}"
+
             body = render_template('/account/email/blogupdate.md',
                                    user_name=row.name,
                                    blog=blog,
@@ -633,8 +637,7 @@ def notify_blog_users(blog_id, project_id, queue='high'):
                        queue=queue)
             enqueue_job(job)
             users += 1
-    msg = "%s users notified by email" % users
-    return msg
+    return f"{users} users notified by email"
 
 
 def get_weekly_stats_update_projects():
@@ -647,7 +650,7 @@ def get_weekly_stats_update_projects():
     only_pros = feature_handler.only_for_pro('project_weekly_report')
     only_pros_sql = 'AND "user".pro=true' if only_pros else ''
     send_emails_date = current_app.config.get('WEEKLY_UPDATE_STATS')
-    today = datetime.today().strftime('%A').lower()
+    today = datetime.now().strftime('%A').lower()
     timeout = current_app.config.get('TIMEOUT')
     if today.lower() == send_emails_date.lower():
         sql = text('''
@@ -665,12 +668,13 @@ def get_weekly_stats_update_projects():
                    ''' % only_pros_sql)
         results = db.slave_session.execute(sql)
         for row in results:
-            job = dict(name=send_weekly_stats_project,
-                       args=[row.id],
-                       kwargs={},
-                       timeout=timeout,
-                       queue='low')
-            yield job
+            yield dict(
+                name=send_weekly_stats_project,
+                args=[row.id],
+                kwargs={},
+                timeout=timeout,
+                queue='low',
+            )
 
 
 def send_weekly_stats_project(project_id):
@@ -683,7 +687,7 @@ def send_weekly_stats_project(project_id):
     update_stats(project_id)
     dates_stats, hours_stats, users_stats = get_stats(project_id,
                                                       period='1 week')
-    subject = "Weekly Update: %s" % project.name
+    subject = f"Weekly Update: {project.name}"
 
     timeout = current_app.config.get('TIMEOUT')
 
@@ -735,20 +739,17 @@ def news():
         import pickle
     urls = ['https://github.com/Scifabric/pybossa/releases.atom',
             'http://scifabric.com/blog/all.atom.xml']
-    score = 0
     notify = False
     if current_app.config.get('NEWS_URL'):
         urls += current_app.config.get('NEWS_URL')
-    for url in urls:
+    for score, url in enumerate(urls):
         d = feedparser.parse(url)
         tmp = get_news(score)
         if (d.entries and (len(tmp) == 0)
            or (tmp[0]['updated'] != d.entries[0]['updated'])):
-            mapping = dict()
-            mapping[pickle.dumps(d.entries[0])] = float(score)
+            mapping = {pickle.dumps(d.entries[0]): float(score)}
             sentinel.master.zadd(FEED_KEY, mapping)
             notify = True
-        score += 1
     if notify:
         notify_news_admins()
 
@@ -763,7 +764,7 @@ def check_failed():
     count = len(job_ids)
     FAILED_JOBS_RETRIES = current_app.config.get('FAILED_JOBS_RETRIES')
     for job_id in job_ids:
-        KEY = 'pybossa:job:failed:%s' % job_id
+        KEY = f'pybossa:job:failed:{job_id}'
         job = fq.fetch_job(job_id)
         if sentinel.slave.exists(KEY):
             sentinel.master.incr(KEY)
@@ -773,12 +774,15 @@ def check_failed():
         if int(sentinel.slave.get(KEY)) < FAILED_JOBS_RETRIES:
             requeue_job(job_id)
         else:
-            KEY = 'pybossa:job:failed:mailed:%s' % job_id
+            KEY = f'pybossa:job:failed:mailed:{job_id}'
             if (not sentinel.slave.exists(KEY) and
                     current_app.config.get('ADMINS')):
-                subject = "JOB: %s has failed more than 3 times" % job_id
-                body = "Please, review the background jobs of your server."
-                body += "\n This is the trace error\n\n"
+                subject = f"JOB: {job_id} has failed more than 3 times"
+                body = (
+                    "Please, review the background jobs of your server."
+                    + "\n This is the trace error\n\n"
+                )
+
                 body += "------------------------------\n\n"
                 body += job.exc_info
                 mail_dict = dict(recipients=current_app.config.get('ADMINS'),
@@ -787,7 +791,7 @@ def check_failed():
                 ttl = current_app.config.get('FAILED_JOBS_MAILS')*24*60*60
                 sentinel.master.setex(KEY, ttl, 1)
     if count > 0:
-        return "JOBS: %s You have failed the system." % job_ids
+        return f"JOBS: {job_ids} You have failed the system."
     else:
         return "You have not failed the system"
 
@@ -817,7 +821,7 @@ def delete_account(user_id, **kwargs):
     email = user.email_addr
     brand = current_app.config.get('BRAND')
     user_repo.delete(user)
-    subject = '[%s]: Your account has been deleted' % brand
+    subject = f'[{brand}]: Your account has been deleted'
     mailchimp_deleted = True
     body = """Hi,\nYour account and personal data has been deleted from %s.""" % brand
     if current_app.config.get('MAILCHIMP_API_KEY'):
@@ -828,8 +832,7 @@ def delete_account(user_id, **kwargs):
         body += '\nDisqus does not provide an API method to delete your account. You will have to do it by hand yourself in the disqus.com site.'
     recipients = [email]
     if current_app.config.get('ADMINS'):
-        for em in current_app.config.get('ADMINS'):
-            recipients.append(em)
+        recipients.extend(iter(current_app.config.get('ADMINS')))
     mail_dict = dict(recipients=recipients, subject=subject, body=body)
     send_mail(mail_dict)
 
@@ -847,33 +850,34 @@ def export_userdata(user_id, **kwargs):
     pdf = json_exporter._make_zip(None, '', 'personal_data', user_data, user_id,
                                   'personal_data.zip')
     upf = None
-    if len(projects_data) > 0:
+    if projects_data:
         upf = json_exporter._make_zip(None, '', 'user_projects', projects_data, user_id,
                                       'user_projects.zip')
     ucf = None
-    if len(taskruns_data) > 0:
+    if taskruns_data:
         ucf = json_exporter._make_zip(None, '', 'user_contributions', taskruns_data, user_id,
                                       'user_contributions.zip')
     upload_method = current_app.config.get('UPLOAD_METHOD')
     if upload_method == 'local':
         upload_method = 'uploads.uploaded_file'
 
-    personal_data_link = url_for(upload_method,
-                                 filename="user_%s/%s" % (user_id, pdf),
-                                 _external=True)
+    personal_data_link = url_for(
+        upload_method, filename=f"user_{user_id}/{pdf}", _external=True
+    )
+
     # personal_data_link = personal_data_link.replace('http://', 'https://', 1)
     personal_projects_link = None
     if upf:
-        personal_projects_link = url_for(upload_method,
-                                         filename="user_%s/%s" % (user_id,
-                                                             upf),
-                                         _external=True)
+        personal_projects_link = url_for(
+            upload_method, filename=f"user_{user_id}/{upf}", _external=True
+        )
+
     personal_contributions_link = None
     if ucf:
-        personal_contributions_link = url_for(upload_method,
-                                              filename="user_%s/%s" % (user_id,
-                                                                   ucf),
-                                              _external=True)
+        personal_contributions_link = url_for(
+            upload_method, filename=f"user_{user_id}/{ucf}", _external=True
+        )
+
 
     body = render_template('/account/email/exportdata.md',
                            user=user.dictize(),
@@ -940,12 +944,13 @@ def get_notify_inactive_accounts(queue='monthly'):
                              body=body,
                              html=html)
 
-            job = dict(name=send_mail,
-                       args=[mail_dict, user.id],
-                       kwargs={},
-                       timeout=timeout,
-                       queue=queue)
-            yield job
+            yield dict(
+                name=send_mail,
+                args=[mail_dict, user.id],
+                kwargs={},
+                timeout=timeout,
+                queue=queue,
+            )
 
 
 def get_delete_inactive_accounts(queue='bimonthly'):
@@ -966,9 +971,10 @@ def get_delete_inactive_accounts(queue='bimonthly'):
         if (user.restrict is False
                 and len(user.projects) == 0):
 
-            job = dict(name=delete_account,
-                       args=[user.id],
-                       kwargs={},
-                       timeout=timeout,
-                       queue=queue)
-            yield job
+            yield dict(
+                name=delete_account,
+                args=[user.id],
+                kwargs={},
+                timeout=timeout,
+                queue=queue,
+            )

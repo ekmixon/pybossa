@@ -48,8 +48,7 @@ class BulkTaskEpiCollectPlusImport(BulkTaskImport):
 
     def _get_data_url(self):
         """Get data url."""
-        return 'http://plus.epicollect.net/%s/%s.json' % \
-            (self.project, self.form)
+        return f'http://plus.epicollect.net/{self.project}/{self.form}.json'
 
     def _get_epicollect_data_from_request(self, r):
         """Get epicollect data from request."""

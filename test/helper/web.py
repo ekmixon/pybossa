@@ -35,14 +35,14 @@ class Helper(Test):
         if title is None:
             return "<title>PYBOSSA - PyBossa by Scifabric</title>"
         else:
-            return "<title>PYBOSSA &middot; %s - PyBossa by Scifabric</title>" % title
+            return f"<title>PYBOSSA &middot; {title} - PyBossa by Scifabric</title>"
 
     @patch('pybossa.view.account.signer')
     def register(self, mock, fullname="John Doe", name="johndoe",
                  password="p4ssw0rd", email=None, consent=False):
         """Helper function to register and sign in a user"""
         if email is None:
-            email = name + '@example.com'
+            email = f'{name}@example.com'
         userdict = {'fullname': fullname, 'name': name,
                     'email_addr': email, 'password': password,
                     'consent': consent}
@@ -57,47 +57,39 @@ class Helper(Test):
         url = '/account/signin'
         headers = None
         if next is not None:
-            url = url + '?next=' + next
-        if method == "POST":
-            payload = {'email': email, 'password': password}
-            if content_type == 'application/json':
-                data = json.dumps(payload)
-            else:
-                data = payload
-            if csrf:
-                headers = {'X-CSRFToken': csrf}
-            return self.app.post(url, data=data,
-                                 content_type=content_type,
-                                 follow_redirects=follow_redirects,
-                                 headers=headers)
-        else:
+            url = f'{url}?next={next}'
+        if method != "POST":
             return self.app.get(url, follow_redirects=follow_redirects,
                                 content_type=content_type, headers=headers)
+        payload = {'email': email, 'password': password}
+        data = json.dumps(payload) if content_type == 'application/json' else payload
+        if csrf:
+            headers = {'X-CSRFToken': csrf}
+        return self.app.post(url, data=data,
+                             content_type=content_type,
+                             follow_redirects=follow_redirects,
+                             headers=headers)
 
     def otpvalidation(self, method="POST", token='invalid', otp='-1',
                       content_type="multipart/form-data", follow_redirects=True,
                       csrf=None):
-        url = '/account/{}/otpvalidation'.format(token)
+        url = f'/account/{token}/otpvalidation'
         headers = None
-        if method == 'POST':
-            payload = dict(otp=otp)
-            if content_type == 'application/json':
-                data = json.dumps(payload)
-            else:
-                data = payload
-            if csrf:
-                headers = {'X-CSRFToken': csrf}
-            return self.app.post(url, data=data,
-                                 content_type=content_type,
-                                 follow_redirects=follow_redirects,
-                                 headers=headers)
-        else:
+        if method != 'POST':
             return self.app.get(url, data=data,
                                 content_type=content_type, headers=headers)
+        payload = dict(otp=otp)
+        data = json.dumps(payload) if content_type == 'application/json' else payload
+        if csrf:
+            headers = {'X-CSRFToken': csrf}
+        return self.app.post(url, data=data,
+                             content_type=content_type,
+                             follow_redirects=follow_redirects,
+                             headers=headers)
 
     def profile(self, name="johndoe"):
         """Helper function to check profile of signed in user"""
-        url = "/account/%s" % name
+        url = f"/account/{name}"
         return self.app.get(url, follow_redirects=True)
 
     def update_profile(self, method="POST", id=1, fullname="John Doe",
@@ -110,7 +102,7 @@ class Helper(Test):
                        csrf=None,
                        follow_redirects=True):
         """Helper function to update the profile of users"""
-        url = "/account/%s/update" % name
+        url = f"/account/{name}/update"
         if new_name:
             name = new_name
         if (method == "POST"):
@@ -121,9 +113,7 @@ class Helper(Test):
                        'btn': btn}
             if content_type == 'application/json':
                 payload = json.dumps(payload)
-            headers = None
-            if csrf:
-                headers = {'X-CSRFToken': csrf}
+            headers = {'X-CSRFToken': csrf} if csrf else None
             return self.app.post(url,
                                  data=payload,
                                  follow_redirects=follow_redirects,
@@ -166,9 +156,7 @@ class Helper(Test):
 
     def new_task(self, project_id):
         """Helper function to create tasks for a project"""
-        tasks = []
-        for i in range(0, 10):
-            tasks.append(Task(project_id=project_id, state='0', info={}))
+        tasks = [Task(project_id=project_id, state='0', info={}) for _ in range(10)]
         db.session.add_all(tasks)
         db.session.commit()
 
@@ -180,7 +168,7 @@ class Helper(Test):
     def task_settings_scheduler(self, method="POST", short_name='sampleapp',
                                 sched="default"):
         """Helper function to modify task scheduler"""
-        url = "/project/%s/tasks/scheduler" % short_name
+        url = f"/project/{short_name}/tasks/scheduler"
         if method == "POST":
             return self.app.post(url, data={
                 'sched': sched,
@@ -191,7 +179,7 @@ class Helper(Test):
     def task_settings_redundancy(self, method="POST", short_name='sampleapp',
                                  n_answers=30):
         """Helper function to modify task redundancy"""
-        url = "/project/%s/tasks/redundancy" % short_name
+        url = f"/project/{short_name}/tasks/redundancy"
         if method == "POST":
             return self.app.post(url, data={
                 'n_answers': n_answers,
@@ -202,7 +190,7 @@ class Helper(Test):
     def task_settings_priority(self, method="POST", short_name='sampleapp',
                                  task_ids="1", priority_0=0.0):
         """Helper function to modify task redundancy"""
-        url = "/project/%s/tasks/priority" % short_name
+        url = f"/project/{short_name}/tasks/priority"
         if method == "POST":
             return self.app.post(url, data={
                 'task_ids': task_ids,
@@ -214,11 +202,9 @@ class Helper(Test):
     def delete_project(self, method="POST", short_name="sampleapp"):
         """Helper function to delete a project"""
         if method == "POST":
-            return self.app.post("/project/%s/delete" % short_name,
-                                 follow_redirects=True)
+            return self.app.post(f"/project/{short_name}/delete", follow_redirects=True)
         else:
-            return self.app.get("/project/%s/delete" % short_name,
-                                follow_redirects=True)
+            return self.app.get(f"/project/{short_name}/delete", follow_redirects=True)
 
     def update_project(self,
                        method="POST", short_name="sampleapp", id=1,
@@ -246,18 +232,20 @@ class Helper(Test):
                        password=new_password)
 
         if method == "POST":
-            return self.app.post("/project/%s/update" % short_name,
-                                 data=payload, follow_redirects=True)
+            return self.app.post(
+                f"/project/{short_name}/update",
+                data=payload,
+                follow_redirects=True,
+            )
+
         else:
-            return self.app.get("/project/%s/update" % short_name,
-                                follow_redirects=True)
+            return self.app.get(f"/project/{short_name}/update", follow_redirects=True)
 
     def get_csrf(self, endpoint):
         """Return csrf token for endpoint."""
         res = self.app.get(endpoint,
                            content_type='application/json')
-        csrf = json.loads(res.data).get('form').get('csrf')
-        return csrf
+        return json.loads(res.data).get('form').get('csrf')
 
     def check_cookie(self, response, name):
         # Checks for existence of a cookie and verifies the value of it

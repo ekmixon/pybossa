@@ -40,7 +40,7 @@ class BlogpostAPI(APIBase):
     def _forbidden_attributes(self, data):
         for key in list(data.keys()):
             if key in self.reserved_keys:
-                msg = "Reserved keys in payload: %s" % key
+                msg = f"Reserved keys in payload: {key}"
                 raise BadRequest(msg)
 
     def _update_object(self, obj):

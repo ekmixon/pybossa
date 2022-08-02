@@ -35,7 +35,7 @@ def upgrade():
     task_update = task.update().\
                        where(task.c.id == bindparam('task_id')).\
                        values(info=bindparam('new_info'))
-    if len(update_values) > 0:
+    if update_values:
         conn.execute(task_update, update_values)
 
 
@@ -57,5 +57,5 @@ def downgrade():
     task_update = task.update().\
                        where(task.c.id == bindparam('task_id')).\
                        values(info=bindparam('new_info'))
-    if len(update_values) > 0:
+    if update_values:
         conn.execute(task_update, update_values)

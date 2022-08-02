@@ -38,7 +38,7 @@ class Newsletter(object):
         self.app = app
         if app.config.get('MAILCHIMP_API_KEY'):
             self.dc = app.config.get('MAILCHIMP_API_KEY').split('-')[1]
-            self.root = 'https://%s.api.mailchimp.com/3.0' % self.dc
+            self.root = f'https://{self.dc}.api.mailchimp.com/3.0'
             self.auth = HTTPBasicAuth('user', app.config.get('MAILCHIMP_API_KEY'))
             self.list_id = app.config.get('MAILCHIMP_LIST_ID')
 
@@ -59,35 +59,24 @@ class Newsletter(object):
         """Check if user is subscibed or not."""
         if list_id is None:
             list_id = self.list_id
-        url = '%s/lists/%s/members/%s' % (self.root,
-                                          list_id,
-                                          self.get_email_hash(email))
+        url = f'{self.root}/lists/{list_id}/members/{self.get_email_hash(email)}'
         res = requests.get(url, auth=self.auth)
         res = res.json()
-        if res['status'] == 200:
-            return True, res
-        else:
-            return False, res
+        return (True, res) if res['status'] == 200 else (False, res)
 
     def delete_user(self, email, list_id=None):
         """Delete user from list_id."""
         if list_id is None:
             list_id = self.list_id
-        url = '%s/lists/%s/members/%s' % (self.root,
-                                          list_id,
-                                          self.get_email_hash(email))
+        url = f'{self.root}/lists/{list_id}/members/{self.get_email_hash(email)}'
         res = requests.delete(url, auth=self.auth)
-        if res.status_code == 204:
-            return True
-        else:
-            return False
+        return res.status_code == 204
 
     def subscribe_user(self, user, list_id=None, update=False):
         """Subscribe, update a user of a mailchimp list."""
         if list_id is None:
             list_id = self.list_id
-        url = '%s/lists/%s/members/' % (self.root,
-                                        list_id)
+        url = f'{self.root}/lists/{list_id}/members/'
         data = dict(email_address=user.email_addr,
                     status='pending',
                     merge_fields=dict(FNAME=user.fullname)
@@ -98,9 +87,8 @@ class Newsletter(object):
                                 auth=self.auth)
         else:
             data['status_if_new'] = 'pending'
-            url = '%s/lists/%s/members/%s' % (self.root,
-                                              list_id,
-                                              self.get_email_hash(user.email_addr))
+            url = f'{self.root}/lists/{list_id}/members/{self.get_email_hash(user.email_addr)}'
+
 
             res = requests.put(url, data=json.dumps(data),
                                headers={'content-type': 'application/json'},

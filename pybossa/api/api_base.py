@@ -150,9 +150,10 @@ class APIBase(MethodView):
         items = []
         for result in query_result:
             # This is for n_favs orderby case
-            if not isinstance(result, DomainObject):
-                if 'n_favs' in list(result.keys()):
-                    result = result[0]
+            if not isinstance(result, DomainObject) and 'n_favs' in list(
+                result.keys()
+            ):
+                result = result[0]
             try:
                 if (result.__class__ != self.__class__):
                     (item, headline, rank) = result
@@ -182,8 +183,7 @@ class APIBase(MethodView):
 
     def _add_hateoas_links(self, item):
         obj = item.dictize()
-        related = request.args.get('related')
-        if related:
+        if related := request.args.get('related'):
             if item.__class__.__name__ == 'Task':
                 obj['task_runs'] = []
                 obj['result'] = None
@@ -215,8 +215,7 @@ class APIBase(MethodView):
                 for tr in task_runs:
                     obj['task_runs'].append(tr.dictize())
 
-        stats = request.args.get('stats')
-        if stats:
+        if stats := request.args.get('stats'):
             if item.__class__.__name__ == 'Project':
                 stats = project_stats_repo.filter_by(
                     project_id=item.id, limit=1)
@@ -234,12 +233,11 @@ class APIBase(MethodView):
         repo_info = repos[self.__class__.__name__]
         if oid is None:
             limit, offset, orderby = self._set_limit_and_offset()
-            results = self._filter_query(repo_info, limit, offset, orderby)
+            return self._filter_query(repo_info, limit, offset, orderby)
         else:
             repo = repo_info['repo']
             query_func = repo_info['get']
-            results = [getattr(repo, query_func)(oid)]
-        return results
+            return [getattr(repo, query_func)(oid)]
 
     def api_context(self, all_arg, **filters):
         if current_user.is_authenticated:
@@ -255,9 +253,7 @@ class APIBase(MethodView):
                          'fulltextsearch', 'desc', 'orderby', 'related',
                          'participated', 'full', 'stats']:
                 # Raise an error if the k arg is not a column
-                if self.__class__ == Task and k == 'external_uid':
-                    pass
-                else:
+                if self.__class__ != Task or k != 'external_uid':
                     getattr(self.__class__, k)
                 filters[k] = request.args[k]
         repo = repo_info['repo']
@@ -268,21 +264,27 @@ class APIBase(MethodView):
         if request.args.get('participated'):
             filters['participated'] = get_user_id_or_ip()
         fulltextsearch = request.args.get('fulltextsearch')
-        desc = request.args.get('desc') if request.args.get('desc') else False
+        desc = request.args.get('desc') or False
         desc = fuzzyboolean(desc)
-        if last_id:
-            results = getattr(repo, query_func)(limit=limit, last_id=last_id,
-                                                fulltextsearch=fulltextsearch,
-                                                desc=False,
-                                                orderby=orderby,
-                                                **filters)
-        else:
-            results = getattr(repo, query_func)(limit=limit, offset=offset,
-                                                fulltextsearch=fulltextsearch,
-                                                desc=desc,
-                                                orderby=orderby,
-                                                **filters)
-        return results
+        return (
+            getattr(repo, query_func)(
+                limit=limit,
+                last_id=last_id,
+                fulltextsearch=fulltextsearch,
+                desc=False,
+                orderby=orderby,
+                **filters
+            )
+            if last_id
+            else getattr(repo, query_func)(
+                limit=limit,
+                offset=offset,
+                fulltextsearch=fulltextsearch,
+                desc=desc,
+                orderby=orderby,
+                **filters
+            )
+        )
 
     def _set_limit_and_offset(self):
         try:
@@ -294,8 +296,7 @@ class APIBase(MethodView):
         except (ValueError, TypeError):
             offset = 0
         try:
-            orderby = request.args.get(
-                'orderby') if request.args.get('orderby') else 'id'
+            orderby = request.args.get('orderby') or 'id'
         except (ValueError, TypeError):
             orderby = 'updated'
         return limit, offset, orderby
@@ -421,7 +422,7 @@ class APIBase(MethodView):
                 action='PUT')
 
     def _update_instance(self, existing, repo, repos, new_upload=None):
-        data = dict()
+        data = {}
         if new_upload is None:
             data = json.loads(request.data)
             self._forbidden_attributes(data)
@@ -498,51 +499,51 @@ class APIBase(MethodView):
         request_headers = request.headers.get('Content-Type')
         if request_headers is None:
             request_headers = []
-        if (content_type in request_headers and
-                cls_name in self.allowed_classes_upload):
-            tmp = dict()
-            for key in list(request.form.keys()):
-                tmp[key] = request.form[key]
-            if isinstance(self, announcement.Announcement):
-                # don't check project id for announcements
-                ensure_authorized_to('create', self)
-                upload_method = current_app.config.get('UPLOAD_METHOD')
-                if request.files.get('file') is None:
-                    raise AttributeError
-                _file = request.files['file']
-                container = "user_%s" % current_user.id
-            else:
-                ensure_authorized_to('create', self.__class__,
-                                     project_id=tmp['project_id'])
-                project = project_repo.get(tmp['project_id'])
-                upload_method = current_app.config.get('UPLOAD_METHOD')
-                if request.files.get('file') is None:
-                    raise AttributeError
-                _file = request.files['file']
-                if current_user.is_authenticated:
-                    if current_user.admin:
-                        container = "user_%s" % project.owner.id
-                    else:
-                        container = "user_%s" % current_user.id
-                else:
-                    container = "anonymous"
-            uploader.upload_file(_file,
-                                 container=container)
-            avatar_absolute = current_app.config.get('AVATAR_ABSOLUTE')
-            file_url = get_avatar_url(upload_method,
-                                      _file.filename,
-                                      container,
-                                      avatar_absolute)
-            tmp['media_url'] = file_url
-            if tmp.get('info') is None:
-                tmp['info'] = dict()
-            elif type(tmp['info']) is six.text_type:
-                tmp['info'] = json.loads(tmp['info'])
-            tmp['info']['container'] = container
-            tmp['info']['file_name'] = _file.filename
-            return tmp
-        else:
+        if (
+            content_type not in request_headers
+            or cls_name not in self.allowed_classes_upload
+        ):
             return None
+        tmp = {key: request.form[key] for key in list(request.form.keys())}
+        if isinstance(self, announcement.Announcement):
+            # don't check project id for announcements
+            ensure_authorized_to('create', self)
+            upload_method = current_app.config.get('UPLOAD_METHOD')
+            if request.files.get('file') is None:
+                raise AttributeError
+            container = f"user_{current_user.id}"
+        else:
+            ensure_authorized_to('create', self.__class__,
+                                 project_id=tmp['project_id'])
+            project = project_repo.get(tmp['project_id'])
+            upload_method = current_app.config.get('UPLOAD_METHOD')
+            if request.files.get('file') is None:
+                raise AttributeError
+            if current_user.is_authenticated:
+                container = (
+                    f"user_{project.owner.id}"
+                    if current_user.admin
+                    else f"user_{current_user.id}"
+                )
+
+            else:
+                container = "anonymous"
+        _file = request.files['file']
+        uploader.upload_file(_file,
+                             container=container)
+        avatar_absolute = current_app.config.get('AVATAR_ABSOLUTE')
+        file_url = get_avatar_url(upload_method,
+                                  _file.filename,
+                                  container,
+                                  avatar_absolute)
+        tmp['media_url'] = file_url
+        if tmp.get('info') is None:
+            tmp['info'] = {}
+        elif type(tmp['info']) is six.text_type:
+            tmp['info'] = json.loads(tmp['info'])
+        tmp['info']['container'] = container
+        tmp['info']['file_name'] = _file.filename
+        return tmp
 
     def _file_delete(self, request, obj):
         """Delete file object."""

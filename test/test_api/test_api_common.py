@@ -57,7 +57,7 @@ class TestApiCommon(TestAPI):
         assert data[0].get('name') == projects[10].name, data[0]
 
         # Keyset pagination
-        url = '/api/project?limit=10&last_id=%s' % projects[9].id
+        url = f'/api/project?limit=10&last_id={projects[9].id}'
         res = self.app.get(url)
         data = json.loads(res.data)
         assert len(data) == 10, len(data)
@@ -98,10 +98,10 @@ class TestApiCommon(TestAPI):
         assert len(data) == 1, len(data)
         assert data[0].get('id') == project_created.id
         year = datetime.datetime.now().year
-        res = self.app.get('/api/project?created=%s' % year)
+        res = self.app.get(f'/api/project?created={year}')
         data = json.loads(res.data)
         assert len(data) == 20, len(data)
-        res = self.app.get('/api/project?created=%s&limit=100' % year)
+        res = self.app.get(f'/api/project?created={year}&limit=100')
         data = json.loads(res.data)
         assert len(data) == 30, len(data)
 
@@ -118,7 +118,7 @@ class TestApiCommon(TestAPI):
         year = datetime.datetime.now().year
 
         for endpoint in self.endpoints:
-            url = '/api/' + endpoint + '?api_key=' + user.api_key + '&all=1'
+            url = f'/api/{endpoint}?api_key={user.api_key}&all=1'
             res = self.app.get(url)
             data = json.loads(res.data)
 
@@ -152,7 +152,7 @@ class TestApiCommon(TestAPI):
         assert tmp.info['total'] == 150, tmp
 
         for endpoint in self.endpoints:
-            url = '/api/' + endpoint + '?api_key=' + owner.api_key + '&all=1'
+            url = f'/api/{endpoint}?api_key={owner.api_key}&all=1'
             res = self.app.get(url)
             data = json.loads(res.data)
 
@@ -182,7 +182,7 @@ class TestApiCommon(TestAPI):
                 assert res.mimetype == 'application/json', res
 
         for endpoint in self.endpoints:
-            url = '/api/' + endpoint + '?api_key=' + admin.api_key + '&all=1'
+            url = f'/api/{endpoint}?api_key={admin.api_key}&all=1'
             res = self.app.get(url)
             data = json.loads(res.data)
 
@@ -228,7 +228,7 @@ class TestApiCommon(TestAPI):
 
         # For project owner with associated data
         for endpoint in self.endpoints:
-            url = '/api/' + endpoint + '?api_key=' + users[0].api_key
+            url = f'/api/{endpoint}?api_key={users[0].api_key}'
             res = self.app.get(url)
             data = json.loads(res.data)
 
@@ -255,20 +255,12 @@ class TestApiCommon(TestAPI):
 
         # For authenticated with non-associated data
         for endpoint in self.endpoints:
-            url = '/api/' + endpoint + '?api_key=' + users[3].api_key
+            url = f'/api/{endpoint}?api_key={users[3].api_key}'
 
             res = self.app.get(url)
             data = json.loads(res.data)
 
-            if endpoint == 'project':
-                assert len(data) == 0, data
-                assert res.mimetype == 'application/json', res
-
-            if endpoint == 'task':
-                assert len(data) == 0, data
-                assert res.mimetype == 'application/json', res
-
-            if endpoint == 'taskrun':
+            if endpoint in ['project', 'task', 'taskrun']:
                 assert len(data) == 0, data
                 assert res.mimetype == 'application/json', res
 
@@ -278,7 +270,7 @@ class TestApiCommon(TestAPI):
         """ Test API query search works"""
         # Test first a non-existant field for all end-points
         for endpoint in self.endpoints:
-            res = self.app.get("/api/%s?wrongfield=value" % endpoint)
+            res = self.app.get(f"/api/{endpoint}?wrongfield=value")
             err = json.loads(res.data)
             assert res.status_code == 415, err
             assert err['status'] == 'failed', err
@@ -314,7 +306,7 @@ class TestApiCommon(TestAPI):
         """Test API SQL Injection is not allowed works"""
 
         q = '1%3D1;SELECT%20*%20FROM%20task%20WHERE%201=1'
-        res = self.app.get('/api/task?' + q)
+        res = self.app.get(f'/api/task?{q}')
         error = json.loads(res.data)
         assert res.status_code == 415, error
         assert error['action'] == 'GET', error
@@ -322,22 +314,22 @@ class TestApiCommon(TestAPI):
         assert error['target'] == 'task', error
 
         q = 'project_id=1%3D1;SELECT%20*%20FROM%20task%20WHERE%201'
-        res = self.app.get('/api/apappp?' + q)
+        res = self.app.get(f'/api/apappp?{q}')
         assert res.status_code == 404, res.data
 
         q = 'project_id=1%3D1;SELECT%20*%20FROM%20task%20WHERE%201'
-        res = self.app.get('/api/' + q)
+        res = self.app.get(f'/api/{q}')
         assert res.status_code == 404, res.data
 
         q = 'project_id=1%3D1;SELECT%20*%20FROM%20task%20WHERE%201'
-        res = self.app.get('/api' + q)
+        res = self.app.get(f'/api{q}')
         assert res.status_code == 404, res.data
 
     @with_context
     def test_jsonpify(self):
         """Test API jsonpify decorator works."""
         project = ProjectFactory.create()
-        res = self.app.get('/api/project/%s?callback=mycallback' % project.id)
+        res = self.app.get(f'/api/project/{project.id}?callback=mycallback')
         err_msg = "mycallback should be included in the response"
         assert "mycallback" in str(res.data), err_msg
         err_msg = "Status code should be 200"
@@ -354,12 +346,12 @@ class TestApiCommon(TestAPI):
         assert res.headers['Access-Control-Allow-Origin'] == '*', err_msg
         methods = ['PUT', 'HEAD', 'DELETE', 'OPTIONS', 'GET']
         for m in methods:
-            err_msg = "Access-Control-Allow-Methods: %s is missing" % m
+            err_msg = f"Access-Control-Allow-Methods: {m} is missing"
             assert m in res.headers['Access-Control-Allow-Methods'], err_msg
         assert res.headers['Access-Control-Max-Age'] == '21600', err_msg
         test_headers = ['Content-Type', 'Authorization']
         for header in test_headers:
-            err_msg = "Access-Control-Allow-Headers: %s is missing" % header
+            err_msg = f"Access-Control-Allow-Headers: {header} is missing"
             headers={'Access-Control-Request-Method': 'GET',
                      'Access-Control-Request-Headers': header}
             res = self.app.options('/api/project/1', headers=headers)

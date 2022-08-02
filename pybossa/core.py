@@ -98,8 +98,8 @@ def configure_app(app):
 
     config_upref_mdata = os.path.join(
         os.path.dirname(config_path), 'settings_upref_mdata.py')
-    app.config.upref_mdata = True if os.path.exists(
-        config_upref_mdata) else False
+    app.config.upref_mdata = bool(os.path.exists(config_upref_mdata))
+
 
     # Override DB in case of testing
     if app.config.get('SQLALCHEMY_DATABASE_TEST_URI'):
@@ -176,6 +176,7 @@ def setup_db(app):
         options = dict(bind=engine, scopefunc=_app_ctx_stack.__ident_func__)
         slave_session = db.create_scoped_session(options=options)
         return slave_session
+
     db.app = app
     db.init_app(app)
     db.slave_session = create_slave_session(db, bind='slave')
@@ -183,9 +184,11 @@ def setup_db(app):
         # flask-sqlalchemy does it already for default session db.session
         @app.teardown_appcontext
         def _shutdown_session(response_or_exc):  # pragma: no cover
-            if app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN']:
-                if response_or_exc is None:
-                    db.slave_session.commit()
+            if (
+                app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN']
+                and response_or_exc is None
+            ):
+                db.slave_session.commit()
             db.slave_session.remove()
             return response_or_exc
 
@@ -357,7 +360,7 @@ def setup_twitter_login(app):
         print(inst.args)
         print(inst)
         print("Twitter signin disabled")
-        log_message = 'Twitter signin disabled: %s' % str(inst)
+        log_message = f'Twitter signin disabled: {str(inst)}'
         app.logger.info(log_message)
 
 
@@ -370,7 +373,7 @@ def setup_dropbox_importer(app):
         print(inst.args)
         print(inst)
         print("Dropbox importer not available")
-        log_message = 'Dropbox importer not available: %s' % str(inst)
+        log_message = f'Dropbox importer not available: {str(inst)}'
         app.logger.info(log_message)
 
 
@@ -388,7 +391,7 @@ def setup_twitter_importer(app):
         print(inst.args)
         print(inst)
         print("Twitter importer not available")
-        log_message = 'Twitter importer not available: %s' % str(inst)
+        log_message = f'Twitter importer not available: {str(inst)}'
         app.logger.info(log_message)
 
 
@@ -404,7 +407,7 @@ def setup_youtube_importer(app):
         print(inst.args)
         print(inst)
         print("Youtube importer not available")
-        log_message = 'Youtube importer not available: %s' % str(inst)
+        log_message = f'Youtube importer not available: {str(inst)}'
         app.logger.info(log_message)
 
 
@@ -525,16 +528,8 @@ def setup_hooks(app):
                     if key == 'user':
                         flash(announcement[key], 'info')
 
-        if app.config.get('CONTACT_EMAIL'):  # pragma: no cover
-            contact_email = app.config.get('CONTACT_EMAIL')
-        else:
-            contact_email = 'info@pybossa.com'
-
-        if app.config.get('CONTACT_TWITTER'):  # pragma: no cover
-            contact_twitter = app.config.get('CONTACT_TWITTER')
-        else:
-            contact_twitter = 'PYBOSSA'
-
+        contact_email = app.config.get('CONTACT_EMAIL') or 'info@pybossa.com'
+        contact_twitter = app.config.get('CONTACT_TWITTER') or 'PYBOSSA'
         # Available plugins
         plugins = plugin_manager.plugins
 

@@ -78,10 +78,7 @@ def index(page=1):
     if not accounts and page != 1:
         abort(404)
     pagination = Pagination(page, per_page, count)
-    if current_user.is_authenticated:
-        user_id = current_user.id
-    else:
-        user_id = None
+    user_id = current_user.id if current_user.is_authenticated else None
     top_users = cached_users.get_leaderboard(current_app.config['LEADERBOARD'],
                                              user_id)
     tmp = dict(template='account/index.html', accounts=accounts,
@@ -157,15 +154,14 @@ def signin():
 
     if request.method == 'POST' and not form.validate():
         flash(gettext('Please correct the errors'), 'error')
-    if current_user.is_anonymous:
-        response = dict(template='account/signin.html',
-                        title="Sign in",
-                        form=form,
-                        next=request.args.get('next'))
-        return handle_content_type(response)
-    else:
+    if not current_user.is_anonymous:
         # User already signed in, so redirect to home page
         return redirect_content_type(url_for("home.home"))
+    response = dict(template='account/signin.html',
+                    title="Sign in",
+                    form=form,
+                    next=request.args.get('next'))
+    return handle_content_type(response)
 
 
 def _sign_in_user(user):
@@ -182,9 +178,10 @@ def _email_two_factor_auth(user, invalid_token=False):
     msg = dict(subject='One time password generation details for PYBOSSA',
                recipients=[user.email_addr])
     otp_code = otp.generate_otp_secret(user.email_addr)
-    current_app.logger.debug('otp code generated before sending email: '
-                             '{}, for email: {}'.format(otp_code,
-                                                        user.email_addr))
+    current_app.logger.debug(
+        f'otp code generated before sending email: {otp_code}, for email: {user.email_addr}'
+    )
+
     msg['body'] = render_template(
                         '/account/email/otp.md',
                         user=user, otpcode=otp_code)
@@ -208,7 +205,7 @@ def otpvalidation(token):
     if type(email) == bytes:
         email = email.decode('utf-8')
     user = user_repo.get_by(email_addr=email)
-    current_app.logger.info('validating otp for user email: {}'.format(email))
+    current_app.logger.info(f'validating otp for user email: {email}')
     if request.method == 'POST' and form.validate():
         otp_code = otp.retrieve_user_otp_secret(email)
         if type(otp_code) == bytes:
@@ -229,8 +226,10 @@ def otpvalidation(token):
                           'time password was sent to your email.')
             flash(msg, 'error')
 
-        current_app.logger.info(('Invalid OTP. retrieved: {}, submitted: {}, '
-                                 'email: {}').format(otp_code, user_otp, email))
+        current_app.logger.info(
+            f'Invalid OTP. retrieved: {otp_code}, submitted: {user_otp}, email: {email}'
+        )
+
         _email_two_factor_auth(user, True)
         form.otp.data = ''
     response = dict(template='/account/otpvalidation.html',
@@ -258,8 +257,7 @@ def signout():
 def get_email_confirmation_url(account):
     """Return confirmation url for a given user email."""
     key = signer.dumps(account, salt='account-validation')
-    scheme = current_app.config.get('PREFERRED_URL_SCHEME')
-    if (scheme):
+    if scheme := current_app.config.get('PREFERRED_URL_SCHEME'):
         return url_for_app_type('.confirm_account',
                                 key=key,
                                 _scheme=scheme,
@@ -272,15 +270,14 @@ def get_email_confirmation_url(account):
 @login_required
 def confirm_email():
     """Send email to confirm user email."""
-    acc_conf_dis = current_app.config.get('ACCOUNT_CONFIRMATION_DISABLED')
-    if acc_conf_dis:
+    if acc_conf_dis := current_app.config.get('ACCOUNT_CONFIRMATION_DISABLED'):
         return abort(404)
     if current_user.valid_email is False:
         user = user_repo.get(current_user.id)
         account = dict(fullname=current_user.fullname, name=current_user.name,
                        email_addr=current_user.email_addr)
         confirm_url = get_email_confirmation_url(account)
-        subject = ('Verify your email in %s' % current_app.config.get('BRAND'))
+        subject = f"Verify your email in {current_app.config.get('BRAND')}"
         msg = dict(subject=subject,
                    recipients=[current_user.email_addr],
                    body=render_template('/account/email/validate_email.md',
@@ -312,7 +309,7 @@ def register():
         form = RegisterFormWithUserPrefMetadata(request.body)
         form.set_upref_mdata_choices()
 
-    msg = "I accept receiving emails from %s" % current_app.config.get('BRAND')
+    msg = f"I accept receiving emails from {current_app.config.get('BRAND')}"
     form.consent.label = msg
     if request.method == 'POST' and form.validate():
         if current_app.config.upref_mdata:
@@ -333,10 +330,16 @@ def register():
         confirm_url = get_email_confirmation_url(account)
         if current_app.config.get('ACCOUNT_CONFIRMATION_DISABLED'):
             return _create_account(account)
-        msg = dict(subject='Welcome to %s!' % current_app.config.get('BRAND'),
-                   recipients=[account['email_addr']],
-                   body=render_template('/account/email/validate_account.md',
-                                        user=account, confirm_url=confirm_url))
+        msg = dict(
+            subject=f"Welcome to {current_app.config.get('BRAND')}!",
+            recipients=[account['email_addr']],
+            body=render_template(
+                '/account/email/validate_account.md',
+                user=account,
+                confirm_url=confirm_url,
+            ),
+        )
+
         msg['html'] = markdown(msg['body'])
         mail_queue.enqueue(send_mail, msg)
         data = dict(template='account/account_validation.html',
@@ -360,25 +363,24 @@ def newsletter_subscribe():
 
     """
     # Save that we've prompted the user to sign up in the newsletter
-    if newsletter.is_initialized() and current_user.is_authenticated:
-        next_url = request.args.get('next') or url_for('home.home')
-        user = user_repo.get(current_user.id)
-        if current_user.newsletter_prompted is False:
-            user.newsletter_prompted = True
-            user_repo.update(user)
-        if request.args.get('subscribe') == 'True':
-            newsletter.subscribe_user(user)
-            flash("You are subscribed to our newsletter!", 'success')
-            return redirect_content_type(next_url)
-        elif request.args.get('subscribe') == 'False':
-            return redirect_content_type(next_url)
-        else:
-            response = dict(template='account/newsletter.html',
-                            title=gettext("Subscribe to our Newsletter"),
-                            next=next_url)
-            return handle_content_type(response)
-    else:
+    if not newsletter.is_initialized() or not current_user.is_authenticated:
         return abort(404)
+    next_url = request.args.get('next') or url_for('home.home')
+    user = user_repo.get(current_user.id)
+    if current_user.newsletter_prompted is False:
+        user.newsletter_prompted = True
+        user_repo.update(user)
+    if request.args.get('subscribe') == 'True':
+        newsletter.subscribe_user(user)
+        flash("You are subscribed to our newsletter!", 'success')
+        return redirect_content_type(next_url)
+    elif request.args.get('subscribe') == 'False':
+        return redirect_content_type(next_url)
+    else:
+        response = dict(template='account/newsletter.html',
+                        title=gettext("Subscribe to our Newsletter"),
+                        next=next_url)
+        return handle_content_type(response)
 
 
 @blueprint.route('/register/confirmation', methods=['GET'])
@@ -412,9 +414,8 @@ def _create_account(user_data, ldap_disabled=True):
 
     if ldap_disabled:
         new_user.set_password(user_data['password'])
-    else:
-        if user_data.get('ldap'):
-            new_user.ldap = user_data['ldap']
+    elif user_data.get('ldap'):
+        new_user.ldap = user_data['ldap']
     user_repo.save(new_user)
     flash(gettext('Thanks for signing-up'), 'success')
     return _sign_in_user(new_user)
@@ -434,15 +435,17 @@ def redirect_profile():
     """Redirect method for profile."""
     if current_user.is_anonymous:  # pragma: no cover
         return redirect_content_type(url_for('.signin'), status='not_signed_in')
-    if (request.headers.get('Content-Type') == 'application/json') and current_user.is_authenticated:
-        form = None
-        if current_app.config.upref_mdata:
-            form_data = cached_users.get_user_pref_metadata(current_user.name)
-            form = UserPrefMetadataForm(**form_data)
-            form.set_upref_mdata_choices()
-        return _show_own_profile(current_user, form, current_user)
-    else:
+    if (
+        request.headers.get('Content-Type') != 'application/json'
+        or not current_user.is_authenticated
+    ):
         return redirect_content_type(url_for('.profile', name=current_user.name))
+    form = None
+    if current_app.config.upref_mdata:
+        form_data = cached_users.get_user_pref_metadata(current_user.name)
+        form = UserPrefMetadataForm(**form_data)
+        form.set_upref_mdata_choices()
+    return _show_own_profile(current_user, form, current_user)
 
 
 @blueprint.route('/<name>/', methods=['GET'])
@@ -465,7 +468,7 @@ def profile(name):
 
     if current_user.is_anonymous or (user.id != current_user.id):
         return _show_public_profile(user, form)
-    if current_user.is_authenticated and user.id == current_user.id:
+    if current_user.is_authenticated:
         return _show_own_profile(user, form, current_user)
 
 
@@ -484,7 +487,7 @@ def _show_public_profile(user, form):
         can_update = True
 
     if user.restrict is False:
-        title = "%s &middot; User Profile" % user_dict['fullname']
+        title = f"{user_dict['fullname']} &middot; User Profile"
     else:
         title = "User data is restricted"
         projects_contributed = []
@@ -583,7 +586,7 @@ def update_profile(name):
     avatar_form = AvatarUploadForm()
     password_form = ChangePasswordForm()
 
-    title_msg = "Update your profile: %s" % user.fullname
+    title_msg = f"Update your profile: {user.fullname}"
 
     if request.method == 'POST':
         # Update user avatar
@@ -632,8 +635,8 @@ def _handle_avatar_update(user, avatar_form):
         coordinates = (avatar_form.x1.data, avatar_form.y1.data,
                        avatar_form.x2.data, avatar_form.y2.data)
         prefix = time.time()
-        _file.filename = "%s_avatar.png" % prefix
-        container = "user_%s" % user.id
+        _file.filename = f"{prefix}_avatar.png"
+        container = f"user_{user.id}"
         uploader.upload_file(_file,
                              container=container,
                              coordinates=coordinates)
@@ -674,8 +677,8 @@ def _handle_profile_update(user, update_form):
                            name=update_form.name.data,
                            email_addr=update_form.email_addr.data)
             confirm_url = get_email_confirmation_url(account)
-            subject = ('You have updated your email in %s! Verify it'
-                       % current_app.config.get('BRAND'))
+            subject = f"You have updated your email in {current_app.config.get('BRAND')}! Verify it"
+
             msg = dict(subject=subject,
                        recipients=[update_form.email_addr.data],
                        body=render_template(
@@ -881,13 +884,13 @@ def delete(name):
 
     super_queue.enqueue(delete_account, user.id)
 
-    if (request.headers.get('Content-Type') == 'application/json' or
-        request.args.get('response_format') == 'json'):
-
-        response = dict(job='enqueued', template='account/delete.html')
-        return handle_content_type(response)
-    else:
+    if (
+        request.headers.get('Content-Type') != 'application/json'
+        and request.args.get('response_format') != 'json'
+    ):
         return redirect(url_for('account.signout'))
+    response = dict(job='enqueued', template='account/delete.html')
+    return handle_content_type(response)
 
 
 @blueprint.route('/save_metadata/<name>', methods=['POST'])
@@ -910,7 +913,7 @@ def add_metadata(name):
         if current_user.is_authenticated and current_user.admin:
             draft_projects = cached_users.draft_projects(user.id)
             projects_created.extend(draft_projects)
-        title = "%s &middot; User Profile" % user.name
+        title = f"{user.name} &middot; User Profile"
         flash("Please fix the errors", 'message')
         can_update = current_user.admin
         return render_template('/account/public_profile.html',
@@ -934,7 +937,7 @@ def add_metadata(name):
 def get_user_pref_and_metadata(user_name, form):
     user_pref = {}
     metadata = {}
-    if not any(value for value in list(form.data.values())):
+    if not any(list(form.data.values())):
         return user_pref, metadata
 
     if form.validate():

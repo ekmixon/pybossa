@@ -60,8 +60,7 @@ def can_post(project_id, task_id, user_id_or_ip):
                 user_id_or_ip['external_uid'] or \
                 user_id_or_ip['user_ip'] or \
                 '127.0.0.1'
-        allowed = has_lock(task_id, user_id, TIMEOUT)
-        return allowed
+        return has_lock(task_id, user_id, TIMEOUT)
     else:
         return True
 
@@ -110,20 +109,33 @@ def get_depth_first_task(project_id, user_id=None, user_ip=None,
                          external_uid=None, offset=0, limit=1,
                          orderby='priority_0', desc=True):
     """Get a new task for a given project."""
-    tasks = get_candidate_task_ids(project_id, user_id,
-                                   user_ip, external_uid, limit, offset,
-                                   orderby=orderby, desc=desc)
-    return tasks
+    return get_candidate_task_ids(
+        project_id,
+        user_id,
+        user_ip,
+        external_uid,
+        limit,
+        offset,
+        orderby=orderby,
+        desc=desc,
+    )
 
 
 def get_depth_first_all_task(project_id, user_id=None, user_ip=None,
                              external_uid=None, offset=0, limit=1,
                              orderby='priority_0', desc=True):
     """Get a new task for a given project."""
-    tasks = get_candidate_task_ids(project_id, user_id,
-                                   user_ip, external_uid, limit, offset,
-                                   orderby=orderby, desc=desc, completed=False)
-    return tasks
+    return get_candidate_task_ids(
+        project_id,
+        user_id,
+        user_ip,
+        external_uid,
+        limit,
+        offset,
+        orderby=orderby,
+        desc=desc,
+        completed=False,
+    )
 
 
 def get_incremental_task(project_id, user_id=None, user_ip=None,
@@ -145,11 +157,8 @@ def get_incremental_task(project_id, user_id=None, user_ip=None,
     q = session.query(TaskRun)\
         .filter(TaskRun.task_id == task.id)\
         .order_by(TaskRun.finish_time.desc())
-    last_task_run = q.first()
-    if last_task_run:
+    if last_task_run := q.first():
         task.info['last_answer'] = last_task_run.info
-        # TODO: As discussed in GitHub #53
-        # it is necessary to create a lock in the task!
     return [task]
 
 
@@ -193,7 +202,7 @@ def get_locked_task(project_id, user_id=None, user_ip=None,
 
     user_param = 'user_id'
     uid = user_id
-    if not user_id:
+    if not uid:
         if not user_ip:
             user_ip = '127.0.0.1'
         if not external_uid:
@@ -272,9 +281,7 @@ def get_project_scheduler(project_id, conn):
         SELECT info->>'sched' as sched FROM project WHERE id=:project_id;
         ''')
     row = conn.execute(sql, dict(project_id=project_id)).first()
-    if not row:
-        return 'default'
-    return row.sched or 'default'
+    return row.sched or 'default' if row else 'default'
 
 
 def sched_variants():
@@ -290,15 +297,16 @@ def _set_orderby_desc(query, orderby, descending):
     if orderby == 'fav_user_ids':
         n_favs = func.coalesce(func.array_length(Task.fav_user_ids, 1), 0).label('n_favs')
         query = query.add_column(n_favs)
-        if descending:
-            query = query.order_by(desc("n_favs"))
-        else:
-            query = query.order_by("n_favs")
+        query = (
+            query.order_by(desc("n_favs"))
+            if descending
+            else query.order_by("n_favs")
+        )
+
+    elif descending:
+        query = query.order_by(getattr(Task, orderby).desc())
     else:
-        if descending:
-            query = query.order_by(getattr(Task, orderby).desc())
-        else:
-            query = query.order_by(getattr(Task, orderby).asc())
+        query = query.order_by(getattr(Task, orderby).asc())
     #query = query.order_by(Task.id.asc())
     return query
 

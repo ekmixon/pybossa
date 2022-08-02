@@ -33,6 +33,7 @@ The objects are:
     * cors: the Flask-Cors library object
 
 """
+
 from pybossa.anonymizer import Anonymizer
 import flask_profiler
 from flask_simpleldap import LDAP
@@ -106,10 +107,10 @@ csv_exporter = None
 csrf = CSRFProtect()
 
 # Timeouts
-timeouts = dict()
+timeouts = {}
 
 # Ratelimits
-ratelimits = dict()
+ratelimits = {}
 
 # Newsletter
 newsletter = Newsletter()
@@ -126,10 +127,7 @@ class JSONEncoder(BaseEncoder):  # pragma: no cover
     """JSON Encoder to deal with Babel lazy strings."""
 
     def default(self, o):
-        if isinstance(o, _LazyString):
-            return str(o)
-
-        return BaseEncoder.default(self, o)
+        return str(o) if isinstance(o, _LazyString) else BaseEncoder.default(self, o)
 
 
 # CORS

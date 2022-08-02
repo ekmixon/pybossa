@@ -51,10 +51,7 @@ def redis_cache_is_enabled():
 def last_flashed_message():
     """Return last flashed message by flask."""
     messages = get_flashed_messages(with_categories=True)
-    if len(messages) > 0:
-        return messages[-1]
-    else:
-        return None
+    return messages[-1] if len(messages) > 0 else None
 
 
 def form_to_json(form):
@@ -73,8 +70,7 @@ def user_to_json(user):
 def hash_last_flash_message():
     """Base64 encode the last flash message"""
     data = {}
-    message_and_status = last_flashed_message()
-    if message_and_status:
+    if message_and_status := last_flashed_message():
         data['flash'] = message_and_status[1]
         data['status'] = message_and_status[0]
     json_data = json.dumps(data)
@@ -86,8 +82,7 @@ def handle_content_type(data):
     from pybossa.model.project import Project
     if (request.headers.get('Content-Type') == 'application/json' or
             request.args.get('response_format') == 'json'):
-        message_and_status = last_flashed_message()
-        if message_and_status:
+        if message_and_status := last_flashed_message():
             data['flash'] = message_and_status[1]
             data['status'] = message_and_status[0]
         for item in list(data.keys()):
@@ -95,31 +90,34 @@ def handle_content_type(data):
                 data[item] = form_to_json(data[item])
             if isinstance(data[item], Pagination):
                 data[item] = data[item].to_json()
-            if (item == 'announcements'):
+            if item == 'active_cat':
+                if type(data[item]) != dict:
+                    cat = data[item].to_public_json()
+                data[item] = cat
+            elif item == 'announcements':
                 data[item] = [announcement.to_public_json()
                               for announcement in data[item]]
-            if (item == 'blogposts'):
+            elif item == 'blogposts':
                 data[item] = [blog.to_public_json() for blog in data[item]]
-            if (item == 'categories'):
+            elif item == 'categories':
                 tmp = []
                 for cat in data[item]:
                     if type(cat) != dict:
                         cat = cat.to_public_json()
                     tmp.append(cat)
                 data[item] = tmp
-            if (item == 'active_cat'):
-                if type(data[item]) != dict:
-                    cat = data[item].to_public_json()
-                data[item] = cat
             if (item == 'users') and type(data[item]) != str:
                 data[item] = [user_to_json(user) for user in data[item]]
-            if (item == 'users' or item == 'projects' or item == 'tasks' or item == 'locs') and type(data[item]) == str:
+            if (
+                item in ['users', 'projects', 'tasks', 'locs']
+                and type(data[item]) == str
+            ):
                 data[item] = json.loads(data[item])
-            if (item == 'found'):
-                data[item] = [user_to_json(user) for user in data[item]]
-            if (item == 'category'):
+            if item == 'category':
                 data[item] = data[item].to_public_json()
 
+            elif item == 'found':
+                data[item] = [user_to_json(user) for user in data[item]]
         if 'code' in list(data.keys()):
             return jsonify(data), data['code']
         else:
@@ -127,12 +125,11 @@ def handle_content_type(data):
     else:
         template = data['template']
         del data['template']
-        if 'code' in list(data.keys()):
-            error_code = data['code']
-            del data['code']
-            return render_template(template, **data), error_code
-        else:
+        if 'code' not in list(data.keys()):
             return render_template(template, **data)
+        error_code = data['code']
+        del data['code']
+        return render_template(template, **data), error_code
 
 
 def redirect_content_type(url, status=None):
@@ -148,8 +145,7 @@ def redirect_content_type(url, status=None):
 
 def url_for_app_type(endpoint, _hash_last_flash=False, **values):
     """Generate a URL for an SPA, or otherwise."""
-    spa_server_name = current_app.config.get('SPA_SERVER_NAME')
-    if spa_server_name:
+    if spa_server_name := current_app.config.get('SPA_SERVER_NAME'):
         values.pop('_external', None)
         values.pop('_scheme', None)
         if _hash_last_flash:
@@ -165,22 +161,21 @@ def jsonpify(f):
     def decorated_function(*args, **kwargs):
         callback = request.args.get('callback', False)
         if callback:
-            content = str(callback) + '(' + str(f(*args, **kwargs).data) + ')'
+            content = f'{str(callback)}({str(f(*args, **kwargs).data)})'
             return current_app.response_class(content,
                                               mimetype='application/javascript')
         else:
             return f(*args, **kwargs)
+
     return decorated_function
 
 
-def admin_required(f):  # pragma: no cover
+def admin_required(f):    # pragma: no cover
     """Check if the user is and admin or not."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if current_user.admin:
-            return f(*args, **kwargs)
-        else:
-            return abort(403)
+        return f(*args, **kwargs) if current_user.admin else abort(403)
+
     return decorated_function
 
 
@@ -194,7 +189,7 @@ def pretty_date(time=False):
     """
     import dateutil.parser
     now = datetime.now()
-    if type(time) is str or type(time) is str:
+    if type(time) is str:
         time = dateutil.parser.parse(time)
     if type(time) is int:
         diff = now - datetime.fromtimestamp(time)
@@ -214,7 +209,7 @@ def pretty_date(time=False):
         if second_diff < 10:
             return "just now"
         if second_diff < 60:
-            return str(second_diff) + " seconds ago"
+            return f"{str(second_diff)} seconds ago"
         if second_diff < 120:
             return "a minute ago"
         if second_diff < 3600:
@@ -320,10 +315,7 @@ def get_port():
     """Get port."""
     import os
     port = os.environ.get('PORT', '')
-    if port.isdigit():
-        return int(port)
-    else:
-        return current_app.config['PORT']
+    return int(port) if port.isdigit() else current_app.config['PORT']
 
 
 def get_user_id_or_ip():
@@ -386,8 +378,10 @@ def rank(projects, order_by=None, desc=False):
         points = 0
         if project['overall_progress'] != 100:
             points += 1000
-        if not ('test' in project['name'].lower()
-                or 'test' in project['short_name'].lower()):
+        if (
+            'test' not in project['name'].lower()
+            and 'test' not in project['short_name'].lower()
+        ):
             points += 500
         if project['info'].get('thumbnail'):
             points += 200
@@ -422,9 +416,7 @@ def _last_activity_points(project):
         return 20
     if days_since_modified < 3:
         return 10
-    if days_since_modified < 4:
-        return 5
-    return 0
+    return 5 if days_since_modified < 4 else 0
 
 
 def _points_by_interval(value, weight=1):
@@ -436,17 +428,15 @@ def _points_by_interval(value, weight=1):
         return 10 * weight
     if value > 10:
         return 5 * weight
-    if value > 0:
-        return 1 * weight
-    return 0
+    return 1 * weight if value > 0 else 0
 
 
 def publish_channel(sentinel, project_short_name, data, type, private=True):
     """Publish in a channel some JSON data as a string."""
     if private:
-        channel = "channel_%s_%s" % ("private", project_short_name)
+        channel = f"channel_private_{project_short_name}"
     else:
-        channel = "channel_%s_%s" % ("public", project_short_name)
+        channel = f"channel_public_{project_short_name}"
     msg = dict(type=type, data=data)
     sentinel.master.publish(channel, json.dumps(msg))
 
@@ -463,7 +453,7 @@ def fuzzyboolean(value):
         return False
     if value in ('true', 'yes', 'on', 'y', '1',):
         return True
-    raise ValueError("Invalid literal for boolean(): {}".format(value))
+    raise ValueError(f"Invalid literal for boolean(): {value}")
 
 
 def get_avatar_url(upload_method, avatar, container, external):
@@ -472,12 +462,11 @@ def get_avatar_url(upload_method, avatar, container, external):
         return url_for('rackspace',
                        filename=avatar,
                        container=container)
-    else:
-        filename = container + '/' + avatar
-        return url_for('uploads.uploaded_file',
-                       filename=filename,
-                       _scheme=current_app.config.get('PREFERRED_URL_SCHEME'),
-                       _external=external)
+    filename = f'{container}/{avatar}'
+    return url_for('uploads.uploaded_file',
+                   filename=filename,
+                   _scheme=current_app.config.get('PREFERRED_URL_SCHEME'),
+                   _external=external)
 
 
 def get_disqus_sso(user):  # pragma: no cover
@@ -501,27 +490,30 @@ def get_disqus_sso_payload(user):
     """Return remote_auth_s3 and api_key for user."""
     DISQUS_PUBLIC_KEY = current_app.config.get('DISQUS_PUBLIC_KEY')
     DISQUS_SECRET_KEY = current_app.config.get('DISQUS_SECRET_KEY')
-    if DISQUS_PUBLIC_KEY and DISQUS_SECRET_KEY:
-        if user:
-            data = simplejson.dumps({
+    if not DISQUS_PUBLIC_KEY or not DISQUS_SECRET_KEY:
+        return None, None, None, None
+    data = (
+        simplejson.dumps(
+            {
                 'id': user.id,
                 'username': user.name,
                 'email': user.email_addr,
-            })
-        else:
-            data = simplejson.dumps({})
-        # encode the data to base64
-        message = base64.b64encode(data.encode('utf-8'))
-        # generate a timestamp for signing the message
-        timestamp = int(time.time())
-        # generate our hmac signature
-        tmp = '{} {}'.format(message, timestamp).encode('utf-8')
-        sig = hmac.HMAC(DISQUS_SECRET_KEY.encode('utf-8'), tmp,
-                        hashlib.sha1).hexdigest()
+            }
+        )
+        if user
+        else simplejson.dumps({})
+    )
 
-        return message, timestamp, sig, DISQUS_PUBLIC_KEY
-    else:
-        return None, None, None, None
+    # encode the data to base64
+    message = base64.b64encode(data.encode('utf-8'))
+    # generate a timestamp for signing the message
+    timestamp = int(time.time())
+        # generate our hmac signature
+    tmp = f'{message} {timestamp}'.encode('utf-8')
+    sig = hmac.HMAC(DISQUS_SECRET_KEY.encode('utf-8'), tmp,
+                    hashlib.sha1).hexdigest()
+
+    return message, timestamp, sig, DISQUS_PUBLIC_KEY
 
 
 def exists_materialized_view(db, view):
@@ -535,12 +527,12 @@ def exists_materialized_view(db, view):
 
 def refresh_materialized_view(db, view):
     try:
-        sql = text('REFRESH MATERIALIZED VIEW CONCURRENTLY %s' % view)
+        sql = text(f'REFRESH MATERIALIZED VIEW CONCURRENTLY {view}')
         db.session.execute(sql)
         db.session.commit()
         return "Materialized view refreshed concurrently"
     except ProgrammingError:
-        sql = text('REFRESH MATERIALIZED VIEW %s' % view)
+        sql = text(f'REFRESH MATERIALIZED VIEW {view}')
         db.session.rollback()
         db.session.execute(sql)
         db.session.commit()
@@ -573,7 +565,4 @@ def check_password_strength(
         return False, message
 
     valid = all(re.search(ch, password) for ch in required_chars)
-    if not valid:
-        return False, message
-    else:
-        return True, None
+    return (True, None) if valid else (False, message)

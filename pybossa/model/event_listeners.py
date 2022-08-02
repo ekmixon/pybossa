@@ -53,14 +53,14 @@ def add_blog_event(mapper, conn, target):
                  where id=%s') % target.project_id
     results = conn.execute(sql_query)
     obj = dict(action_updated='Blog')
-    tmp = dict()
+    tmp = {}
     for r in results:
         tmp['id'] = target.project_id
         tmp['name'] = r.name
         tmp['short_name'] = r.short_name
         tmp['info'] = r.info
     tmp = Project().to_public_json(tmp)
-    obj.update(tmp)
+    obj |= tmp
     update_feed(obj)
     # Notify volunteers
     if current_app.config.get('DISABLE_EMAIL_NOTIFICATIONS') is None:
@@ -97,7 +97,7 @@ def add_project_event(mapper, conn, target):
                info=target.info)
     obj = dict(action_updated='Project')
     tmp = Project().to_public_json(tmp)
-    obj.update(tmp)
+    obj |= tmp
     update_feed(obj)
     # Create a clean projectstats object for it
     sql_query = """INSERT INTO project_stats
@@ -115,14 +115,14 @@ def add_task_event(mapper, conn, target):
                  where id=%s') % target.project_id
     results = conn.execute(sql_query)
     obj = dict(action_updated='Task')
-    tmp = dict()
+    tmp = {}
     for r in results:
         tmp['id'] = target.project_id
         tmp['name'] = r.name
         tmp['short_name'] = r.short_name
         tmp['info'] = r.info
     tmp = Project().to_public_json(tmp)
-    obj.update(tmp)
+    obj |= tmp
     update_feed(obj)
 
 
@@ -227,7 +227,7 @@ def on_taskrun_submit(mapper, conn, target):
     sql_query = ('select name, short_name, published, webhook, info, category_id \
                  from project where id=%s') % target.project_id
     results = conn.execute(sql_query)
-    tmp = dict()
+    tmp = {}
     for r in results:
         tmp['name'] = r.name
         tmp['short_name'] = r.short_name
@@ -237,8 +237,8 @@ def on_taskrun_submit(mapper, conn, target):
         tmp['category_id'] = r.category_id
         tmp['id'] = target.project_id
 
-    project_public = dict()
-    project_public.update(Project().to_public_json(tmp))
+    project_public = {}
+    project_public |= Project().to_public_json(tmp)
     project_public['action_updated'] = 'TaskCompleted'
 
     sched.after_save(target, conn)
@@ -247,8 +247,8 @@ def on_taskrun_submit(mapper, conn, target):
         update_task_state(conn, target.task_id)
         update_feed(project_public)
         result_id = create_result(conn, target.project_id, target.task_id)
-        project_private = dict()
-        project_private.update(project_public)
+        project_private = {}
+        project_private |= project_public
         project_private['webhook'] = _webhook
         push_webhook(project_private, target.task_id, result_id)
 
@@ -297,8 +297,8 @@ def create_zero_counter(mapper, conn, target):
 
 @event.listens_for(Task, 'after_delete')
 def delete_task_counter(mapper, conn, target):
-    sql_query = ("delete from counter where project_id=%s and task_id=%s"
-                 % (target.project_id, target.id))
+    sql_query = f"delete from counter where project_id={target.project_id} and task_id={target.id}"
+
     conn.execute(sql_query)
 
 

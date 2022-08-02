@@ -84,17 +84,16 @@ class User(db.Model, DomainObject, UserMixin):
         return False
 
     @classmethod
-    def public_attributes(self):
+    def public_attributes(cls):
         """Return a list of public attributes."""
         return ['created', 'name', 'fullname', 'info',
                 'n_answers', 'registered_ago', 'rank', 'score', 'locale']
 
     @classmethod
-    def public_info_keys(self):
+    def public_info_keys(cls):
         """Return a list of public info keys."""
         default = ['avatar', 'container', 'extra', 'avatar_url']
-        extra = current_app.config.get('USER_INFO_PUBLIC_FIELDS')
-        if extra:
+        if extra := current_app.config.get('USER_INFO_PUBLIC_FIELDS'):
             return list(set(default).union(set(extra)))
         else:
             return default

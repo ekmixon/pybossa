@@ -97,12 +97,11 @@ def featured(project_id=None):
                             form=dict(csrf=generate_csrf()))
             return handle_content_type(response)
         else:
-            project = project_repo.get(project_id)
-            if project:
+            if project := project_repo.get(project_id):
                 ensure_authorized_to('update', project)
                 if request.method == 'POST':
                     if project.featured is True:
-                        msg = "Project.id %s already featured" % project_id
+                        msg = f"Project.id {project_id} already featured"
                         return format_error(msg, 415)
                     cached_projects.reset()
                     project.featured = True
@@ -111,14 +110,14 @@ def featured(project_id=None):
 
                 if request.method == 'DELETE':
                     if project.featured is False:
-                        msg = 'Project.id %s is not featured' % project_id
+                        msg = f'Project.id {project_id} is not featured'
                         return format_error(msg, 415)
                     cached_projects.reset()
                     project.featured = False
                     project_repo.update(project)
                     return json.dumps(project.dictize())
             else:
-                msg = 'Project.id %s not found' % project_id
+                msg = f'Project.id {project_id} not found'
                 return format_error(msg, 404)
     except Exception as e:  # pragma: no cover
         current_app.logger.error(e)
@@ -211,15 +210,12 @@ def add_admin(user_id=None):
     """Add admin flag for user_id."""
     try:
         if user_id:
-            user = user_repo.get(user_id)
-            if user:
-                ensure_authorized_to('update', user)
-                user.admin = True
-                user_repo.update(user)
-                return redirect_content_type(url_for(".users"))
-            else:
-                msg = "User not found"
-                return format_error(msg, 404)
+            if not (user := user_repo.get(user_id)):
+                return format_error("User not found", 404)
+            ensure_authorized_to('update', user)
+            user.admin = True
+            user_repo.update(user)
+            return redirect_content_type(url_for(".users"))
     except Exception as e:  # pragma: no cover
         current_app.logger.error(e)
         return abort(500)
@@ -231,19 +227,14 @@ def add_admin(user_id=None):
 def del_admin(user_id=None):
     """Del admin flag for user_id."""
     try:
-        if user_id:
-            user = user_repo.get(user_id)
-            if user:
-                ensure_authorized_to('update', user)
-                user.admin = False
-                user_repo.update(user)
-                return redirect_content_type(url_for('.users'))
-            else:
-                msg = "User.id not found"
-                return format_error(msg, 404)
-        else:  # pragma: no cover
-            msg = "User.id is missing for method del_admin"
-            return format_error(msg, 415)
+        if not user_id:
+            return format_error("User.id is missing for method del_admin", 415)
+        if not (user := user_repo.get(user_id)):
+            return format_error("User.id not found", 404)
+        ensure_authorized_to('update', user)
+        user.admin = False
+        user_repo.update(user)
+        return redirect_content_type(url_for('.users'))
     except Exception as e:  # pragma: no cover
         current_app.logger.error(e)
         return abort(500)
@@ -274,10 +265,10 @@ def categories():
             else:
                 flash(gettext('Please correct the errors'), 'error')
         categories = cached_cat.get_all()
-        n_projects_per_category = dict()
-        for c in categories:
-            n_projects_per_category[c.short_name] = \
-                cached_projects.n_count(c.short_name)
+        n_projects_per_category = {
+            c.short_name: cached_projects.n_count(c.short_name)
+            for c in categories
+        }
 
         response = dict(template='admin/categories.html',
                         title=gettext('Categories'),
@@ -296,8 +287,7 @@ def categories():
 def del_category(id):
     """Delete a category."""
     try:
-        category = project_repo.get_category(id)
-        if category:
+        if category := project_repo.get_category(id):
             if len(cached_cat.get_all()) > 1:
                 ensure_authorized_to('delete', category)
                 if request.method == 'GET':
@@ -333,8 +323,7 @@ def del_category(id):
 def update_category(id):
     """Update a category."""
     try:
-        category = project_repo.get_category(id)
-        if category:
+        if category := project_repo.get_category(id):
             ensure_authorized_to('update', category)
             form = CategoryForm(obj=category)
             form.populate_obj(category)

@@ -36,21 +36,19 @@ class TestBlogpostAPI(TestAPI):
         blogposts = []
         for project in projects:
             tmp = BlogpostFactory.create_batch(2, project=project)
-            for t in tmp:
-                blogposts.append(t)
-
+            blogposts.extend(iter(tmp))
         project_ids = [project.id for project in projects]
-        url = '/api/blogpost?project_id=%s&limit=100' % project_ids
+        url = f'/api/blogpost?project_id={project_ids}&limit=100'
         res = self.app.get(url)
         data = json.loads(res.data)
         assert len(data) == 3 * 2, len(data)
         for blog in data:
             assert blog['project_id'] in project_ids
-        blogpost_project_ids = list(set([blog['project_id'] for blog in data]))
+        blogpost_project_ids = list({blog['project_id'] for blog in data})
         assert sorted(project_ids) == sorted(blogpost_project_ids)
 
         # more filters
-        res = self.app.get(url + '&orderby=created&desc=true')
+        res = self.app.get(f'{url}&orderby=created&desc=true')
         data = json.loads(res.data)
         assert data[0]['id'] == blogposts[-1].id
 
@@ -72,23 +70,23 @@ class TestBlogpostAPI(TestAPI):
         assert data[9]['user_id'] == owner.id
 
         # As user
-        res = self.app.get(url + '?api_key=' + user.api_key)
+        res = self.app.get(f'{url}?api_key={user.api_key}')
         data = json.loads(res.data)
         assert len(data) == 0, data
 
         # As owner
-        res = self.app.get(url + '?api_key=' + owner.api_key)
+        res = self.app.get(f'{url}?api_key={owner.api_key}')
         data = json.loads(res.data)
         assert len(data) == 1, data
         assert data[0]['user_id'] == owner.id
 
         # Valid field but wrong value
-        res = self.app.get(url + "?title=wrongvalue")
+        res = self.app.get(f"{url}?title=wrongvalue")
         data = json.loads(res.data)
         assert len(data) == 0, data
 
         # Multiple fields
-        res = self.app.get(url + '?title=' + blogpost.title  + '&body=' + blogpost.body)
+        res = self.app.get(f'{url}?title={blogpost.title}&body={blogpost.body}')
         data = json.loads(res.data)
         # One result
         assert len(data) == 10, data
@@ -98,20 +96,20 @@ class TestBlogpostAPI(TestAPI):
         assert data[0]['media_url'] == blogpost.media_url, data
 
         # Limits
-        res = self.app.get(url + "?limit=1")
+        res = self.app.get(f"{url}?limit=1")
         data = json.loads(res.data)
         for item in data:
             assert item['title'] == blogpost.title, item
         assert len(data) == 1, data
 
         # Keyset pagination
-        res = self.app.get(url + '?limit=1&last_id=' + str(blogposts[8].id))
+        res = self.app.get(f'{url}?limit=1&last_id={str(blogposts[8].id)}')
         data = json.loads(res.data)
         assert len(data) == 1, len(data)
         assert data[0]['id'] == blogpost.id
 
         # Errors
-        res = self.app.get(url + "?something")
+        res = self.app.get(f"{url}?something")
         err = json.loads(res.data)
         err_msg = "AttributeError exception should be raised"
         res.status_code == 415, err_msg
@@ -165,14 +163,14 @@ class TestBlogpostAPI(TestAPI):
         assert data['status_code'] == 401, data
 
         # As a user
-        url = '/api/blogpost?api_key=%s' % user.api_key
+        url = f'/api/blogpost?api_key={user.api_key}'
         res = self.app.post(url, data=json.dumps(payload))
         data = json.loads(res.data)
         assert res.status_code == 415, data
         assert data['status_code'] == 415, data
 
         # As owner
-        url = '/api/blogpost?api_key=%s' % owner.api_key
+        url = f'/api/blogpost?api_key={owner.api_key}'
         payload['project_id'] = project.id
         res = self.app.post(url, data=json.dumps(payload))
         data = json.loads(res.data)
@@ -181,7 +179,7 @@ class TestBlogpostAPI(TestAPI):
         assert data['body'] == 'world', data
 
         # As admin
-        url = '/api/blogpost?api_key=%s' % admin.api_key
+        url = f'/api/blogpost?api_key={admin.api_key}'
         payload['project_id'] = project.id
         res = self.app.post(url, data=json.dumps(payload))
         data = json.loads(res.data)
@@ -190,29 +188,29 @@ class TestBlogpostAPI(TestAPI):
         assert data['body'] == 'world', data
 
         # As owner wrong 404 project_id
-        url = '/api/blogpost?api_key=%s' % owner.api_key
+        url = f'/api/blogpost?api_key={owner.api_key}'
         payload['project_id'] = -1
         res = self.app.post(url, data=json.dumps(payload))
         data = json.loads(res.data)
         assert res.status_code == 415, data
 
         # As owner using wrong project_id
-        url = '/api/blogpost?api_key=%s' % owner.api_key
+        url = f'/api/blogpost?api_key={owner.api_key}'
         payload['project_id'] = project2.id
         res = self.app.post(url, data=json.dumps(payload))
         data = json.loads(res.data)
         assert res.status_code == 403, data
 
         # As owner using wrong attribute
-        url = '/api/blogpost?api_key=%s' % owner.api_key
+        url = f'/api/blogpost?api_key={owner.api_key}'
         payload['project_id'] = project2.id
         payload['foo'] = 'bar'
         res = self.app.post(url, data=json.dumps(payload))
         data = json.loads(res.data)
         assert res.status_code == 415, data
 
-        # As owner using reserved key 
-        url = '/api/blogpost?api_key=%s' % owner.api_key
+        # As owner using reserved key
+        url = f'/api/blogpost?api_key={owner.api_key}'
         payload['project_id'] = project.id
         payload['user_id'] = owner.id
         res = self.app.post(url, data=json.dumps(payload))
@@ -230,7 +228,7 @@ class TestBlogpostAPI(TestAPI):
         # As anon
         blogpost.title = 'new'
         blogpost.body = 'new body'
-        url = '/api/blogpost/%s' % blogpost.id
+        url = f'/api/blogpost/{blogpost.id}'
         res = self.app.put(url, data=json.dumps(blogpost.dictize()))
         data = json.loads(res.data)
         assert res.status_code == 401, res.status_code
@@ -238,7 +236,7 @@ class TestBlogpostAPI(TestAPI):
         # As user
         blogpost.title = 'new'
         blogpost.body = 'new body'
-        url = '/api/blogpost/%s?api_key=%s' % (blogpost.id, user.api_key)
+        url = f'/api/blogpost/{blogpost.id}?api_key={user.api_key}'
         data = blogpost.dictize()
         del data['id']
         del data['created']
@@ -251,7 +249,7 @@ class TestBlogpostAPI(TestAPI):
         # As owner
         blogpost.title = 'new'
         blogpost.body = 'new body'
-        url = '/api/blogpost/%s?api_key=%s' % (blogpost.id, owner.api_key)
+        url = f'/api/blogpost/{blogpost.id}?api_key={owner.api_key}'
         payload = blogpost.dictize()
         del payload['user_id']
         del payload['created']
@@ -269,7 +267,7 @@ class TestBlogpostAPI(TestAPI):
         # As admin
         blogpost.title = 'new'
         blogpost.body = 'new body'
-        url = '/api/blogpost/%s?api_key=%s' % (blogpost.id, admin.api_key)
+        url = f'/api/blogpost/{blogpost.id}?api_key={admin.api_key}'
         payload = blogpost.dictize()
         del payload['user_id']
         del payload['created']
@@ -287,7 +285,7 @@ class TestBlogpostAPI(TestAPI):
         # as owner with reserved key
         blogpost.title = 'new'
         blogpost.body = 'new body'
-        url = '/api/blogpost/%s?api_key=%s' % (blogpost.id, owner.api_key)
+        url = f'/api/blogpost/{blogpost.id}?api_key={owner.api_key}'
         payload = blogpost.dictize()
         del payload['user_id']
         del payload['created']
@@ -300,7 +298,7 @@ class TestBlogpostAPI(TestAPI):
         # as owner with wrong key
         blogpost.title = 'new'
         blogpost.body = 'new body'
-        url = '/api/blogpost/%s?api_key=%s' % (blogpost.id, owner.api_key)
+        url = f'/api/blogpost/{blogpost.id}?api_key={owner.api_key}'
         payload = blogpost.dictize()
         del payload['user_id']
         del payload['created']
@@ -325,25 +323,25 @@ class TestBlogpostAPI(TestAPI):
         blogpost2 = BlogpostFactory.create(project=project)
 
         # As anon
-        url = '/api/blogpost/%s' % blogpost.id
+        url = f'/api/blogpost/{blogpost.id}'
         res = self.app.delete(url)
         data = json.loads(res.data)
         assert res.status_code == 401, res.status_code
 
         # As user
-        url = '/api/blogpost/%s?api_key=%s' % (blogpost.id, user.api_key)
+        url = f'/api/blogpost/{blogpost.id}?api_key={user.api_key}'
         res = self.app.delete(url)
         assert res.status_code == 403, res.status_code
 
         # As owner
-        url = '/api/blogpost/%s?api_key=%s' % (blogpost.id, owner.api_key)
+        url = f'/api/blogpost/{blogpost.id}?api_key={owner.api_key}'
         res = self.app.delete(url)
         assert res.status_code == 204, res.status_code
         assert mock_delete.called_with(blogpost.info['file_name'],
                                        blogpost.info['container'])
 
         # As admin
-        url = '/api/blogpost/%s?api_key=%s' % (blogpost2.id, admin.api_key)
+        url = f'/api/blogpost/{blogpost2.id}?api_key={admin.api_key}'
         res = self.app.delete(url)
         assert res.status_code == 204, res.status_code
 
@@ -373,7 +371,7 @@ class TestBlogpostAPI(TestAPI):
         payload = dict(project_id=project.id,
                        file=img)
 
-        url = '/api/blogpost?api_key=%s' % user.api_key
+        url = f'/api/blogpost?api_key={user.api_key}'
         res = self.app.post(url, data=payload,
                             content_type="multipart/form-data")
         data = json.loads(res.data)
@@ -388,12 +386,12 @@ class TestBlogpostAPI(TestAPI):
                        title='title',
                        body='body')
 
-        url = '/api/blogpost?api_key=%s' % project.owner.api_key
+        url = f'/api/blogpost?api_key={project.owner.api_key}'
         res = self.app.post(url, data=payload,
                             content_type="multipart/form-data")
         data = json.loads(res.data)
         assert res.status_code == 200, data
-        container = "user_%s" % owner.id
+        container = f"user_{owner.id}"
         assert data['info']['container'] == container, data
         assert data['info']['file_name'] == 'test_file.jpg', data
         assert 'test_file.jpg' in data['media_url'], data
@@ -406,12 +404,12 @@ class TestBlogpostAPI(TestAPI):
                        title='title',
                        body='body')
 
-        url = '/api/blogpost?api_key=%s' % admin.api_key
+        url = f'/api/blogpost?api_key={admin.api_key}'
         res = self.app.post(url, data=payload,
                             content_type="multipart/form-data")
         data = json.loads(res.data)
         assert res.status_code == 200, data
-        container = "user_%s" % owner.id
+        container = f"user_{owner.id}"
         assert data['info']['container'] == container, data
         assert data['info']['file_name'] == 'test_file.jpg', data
         assert 'test_file.jpg' in data['media_url'], data
@@ -422,7 +420,7 @@ class TestBlogpostAPI(TestAPI):
         payload = dict(project_id=project.id,
                        file=img)
 
-        url = '/api/blogpost?api_key=%s' % owner.api_key
+        url = f'/api/blogpost?api_key={owner.api_key}'
         payload['project_id'] = -1
         res = self.app.post(url, data=payload,
                             content_type="multipart/form-data")
@@ -435,7 +433,7 @@ class TestBlogpostAPI(TestAPI):
         payload = dict(project_id=project.id,
                        file=img)
 
-        url = '/api/blogpost?api_key=%s' % owner.api_key
+        url = f'/api/blogpost?api_key={owner.api_key}'
         payload['project_id'] = project2.id
         res = self.app.post(url, data=payload,
                             content_type="multipart/form-data")
@@ -448,7 +446,7 @@ class TestBlogpostAPI(TestAPI):
         payload = dict(project_id=project.id,
                        wrong=img)
 
-        url = '/api/blogpost?api_key=%s' % owner.api_key
+        url = f'/api/blogpost?api_key={owner.api_key}'
         res = self.app.post(url, data=payload,
                             content_type="multipart/form-data")
         data = json.loads(res.data)
@@ -460,7 +458,7 @@ class TestBlogpostAPI(TestAPI):
         payload = dict(project_id=project.id,
                        file=img)
 
-        url = '/api/blogpost?api_key=%s' % owner.api_key
+        url = f'/api/blogpost?api_key={owner.api_key}'
         payload['project_id'] = project.id
         payload['id'] = 3
         res = self.app.post(url, data=payload,
@@ -483,7 +481,7 @@ class TestBlogpostAPI(TestAPI):
                        file=img)
 
         # As anon
-        url = '/api/blogpost/%s' % blogpost.id
+        url = f'/api/blogpost/{blogpost.id}'
         res = self.app.put(url, data=payload,
                            content_type="multipart/form-data")
         data = json.loads(res.data)
@@ -496,7 +494,7 @@ class TestBlogpostAPI(TestAPI):
         payload = dict(project_id=project.id,
                        file=img)
 
-        url = '/api/blogpost/%s?api_key=%s' % (blogpost.id, user.api_key)
+        url = f'/api/blogpost/{blogpost.id}?api_key={user.api_key}'
         res = self.app.put(url, data=payload,
                            content_type="multipart/form-data")
         data = json.loads(res.data)
@@ -509,13 +507,12 @@ class TestBlogpostAPI(TestAPI):
         payload = dict(project_id=project.id,
                        file=img)
 
-        url = '/api/blogpost/%s?api_key=%s' % (blogpost.id,
-                                               project.owner.api_key)
+        url = f'/api/blogpost/{blogpost.id}?api_key={project.owner.api_key}'
         res = self.app.put(url, data=payload,
                            content_type="multipart/form-data")
         data = json.loads(res.data)
         assert res.status_code == 200, data
-        container = "user_%s" % owner.id
+        container = f"user_{owner.id}"
         assert data['info']['container'] == container, data
         assert data['info']['file_name'] == 'test_file.jpg', data
         assert 'test_file.jpg' in data['media_url'], data
@@ -526,13 +523,12 @@ class TestBlogpostAPI(TestAPI):
         payload = dict(project_id=project.id,
                        file=img)
 
-        url = '/api/blogpost/%s?api_key=%s' % (blogpost.id,
-                                               admin.api_key)
+        url = f'/api/blogpost/{blogpost.id}?api_key={admin.api_key}'
         res = self.app.put(url, data=payload,
                            content_type="multipart/form-data")
         data = json.loads(res.data)
         assert res.status_code == 200, data
-        container = "user_%s" % owner.id
+        container = f"user_{owner.id}"
         assert data['info']['container'] == container, data
         assert data['info']['file_name'] == 'test_file.jpg', data
         assert 'test_file.jpg' in data['media_url'], data
@@ -544,7 +540,7 @@ class TestBlogpostAPI(TestAPI):
         payload = dict(project_id=project.id,
                        file=img)
 
-        url = '/api/blogpost?api_key=%s' % owner.api_key
+        url = f'/api/blogpost?api_key={owner.api_key}'
         payload['project_id'] = -1
         res = self.app.post(url, data=payload,
                             content_type="multipart/form-data")
@@ -557,7 +553,7 @@ class TestBlogpostAPI(TestAPI):
         payload = dict(project_id=project.id,
                        file=img)
 
-        url = '/api/blogpost?api_key=%s' % owner.api_key
+        url = f'/api/blogpost?api_key={owner.api_key}'
         payload['project_id'] = project2.id
         res = self.app.post(url, data=payload,
                             content_type="multipart/form-data")
@@ -570,7 +566,7 @@ class TestBlogpostAPI(TestAPI):
         payload = dict(project_id=project.id,
                        wrong=img)
 
-        url = '/api/blogpost?api_key=%s' % owner.api_key
+        url = f'/api/blogpost?api_key={owner.api_key}'
         res = self.app.post(url, data=payload,
                             content_type="multipart/form-data")
         data = json.loads(res.data)
@@ -582,7 +578,7 @@ class TestBlogpostAPI(TestAPI):
         payload = dict(project_id=project.id,
                        file=img)
 
-        url = '/api/blogpost?api_key=%s' % owner.api_key
+        url = f'/api/blogpost?api_key={owner.api_key}'
         payload['project_id'] = project.id
         payload['id'] = 3
         res = self.app.post(url, data=payload,

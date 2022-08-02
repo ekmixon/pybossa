@@ -431,9 +431,7 @@ class UpdateProfileForm(Form):
 
     def set_locales(self, locales):
         """Fill the locale.choices."""
-        choices = []
-        for locale in locales:
-            choices.append(locale)
+        choices = list(locales)
         self.locale.choices = choices
 
 

@@ -28,21 +28,14 @@ blueprint = Blueprint('leaderboard', __name__)
 @blueprint.route('/window/<int:window>')
 def index(window=0):
     """Get the last activity from users and projects."""
-    if current_user.is_authenticated:
-        user_id = current_user.id
-    else:
-        user_id = None
-
-    if window >= 10:
-        window = 10
-
+    user_id = current_user.id if current_user.is_authenticated else None
+    window = min(window, 10)
     info = request.args.get('info')
 
     leaderboards = current_app.config.get('LEADERBOARDS')
 
-    if info is not None:
-        if leaderboards is None or info not in leaderboards:
-            return abort(404)
+    if info is not None and (leaderboards is None or info not in leaderboards):
+        return abort(404)
 
     top_users = cached_users.get_leaderboard(current_app.config['LEADERBOARD'],
                                              user_id=user_id,

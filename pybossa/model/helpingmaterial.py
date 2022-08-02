@@ -44,11 +44,11 @@ class HelpingMaterial(db.Model, DomainObject):
     priority = Column(Float, default=0)
 
     @classmethod
-    def public_attributes(self):
+    def public_attributes(cls):
         """Return a list of public attributes."""
         return ['created', 'id', 'info', 'media_url', 'priority']
 
     @classmethod
-    def public_info_keys(self):
+    def public_info_keys(cls):
         """Return a list of public info keys."""
         pass

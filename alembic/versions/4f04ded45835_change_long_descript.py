@@ -16,9 +16,7 @@ import sqlalchemy as sa
 
 def upgrade():
     op.alter_column('app', 'long_description', type_=sa.UnicodeText)
-    pass
 
 
 def downgrade():
     op.alter_column('app', 'long_description', type_=sa.Unicode)
-    pass

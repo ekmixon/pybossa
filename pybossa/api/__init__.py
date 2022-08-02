@@ -69,9 +69,9 @@ error = ErrorStatus()
 
 @blueprint.route('/')
 @ratelimit(limit=ratelimits.get('LIMIT'), per=ratelimits.get('PER'))
-def index():  # pragma: no cover
+def index():    # pragma: no cover
     """Return dummy text for welcome page."""
-    return 'The %s API' % current_app.config.get('BRAND')
+    return f"The {current_app.config.get('BRAND')} API"
 
 
 def register_api(view, endpoint, url, pk='id', pk_type='int'):
@@ -89,9 +89,11 @@ def register_api(view, endpoint, url, pk='id', pk_type='int'):
     blueprint.add_url_rule(url,
                            view_func=view_func,
                            methods=['POST', 'OPTIONS'])
-    blueprint.add_url_rule('%s/<%s:%s>' % (url, pk_type, pk),
-                           view_func=view_func,
-                           methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
+    blueprint.add_url_rule(
+        f'{url}/<{pk_type}:{pk}>',
+        view_func=view_func,
+        methods=['GET', 'PUT', 'DELETE', 'OPTIONS'],
+    )
 
 
 register_api(ProjectAPI, 'api_project', '/project', pk='oid', pk_type='int')
@@ -133,7 +135,7 @@ def new_task(project_id):
             for task in tasks:
                 guard.stamp(task, get_user_id_or_ip())
             data = [task.dictize() for task in tasks]
-            if len(data) == 0:
+            if not data:
                 response = make_response(json.dumps({}))
             elif len(data) == 1:
                 response = make_response(json.dumps(data[0]))
@@ -156,8 +158,7 @@ def _retrieve_new_task(project_id):
     if not project.allow_anonymous_contributors and current_user.is_anonymous:
         info = dict(
             error="This project does not allow anonymous contributors")
-        error = [model.task.Task(info=info)]
-        return error
+        return [model.task.Task(info=info)]
 
     if request.args.get('external_uid'):
         resp = jwt_authorize_project(project,
@@ -165,24 +166,10 @@ def _retrieve_new_task(project_id):
         if resp != True:
             return resp
 
-    if request.args.get('limit'):
-        limit = int(request.args.get('limit'))
-    else:
-        limit = 1
-
-    if limit > 100:
-        limit = 100
-
-    if request.args.get('offset'):
-        offset = int(request.args.get('offset'))
-    else:
-        offset = 0
-
-    if request.args.get('orderby'):
-        orderby = request.args.get('orderby')
-    else:
-        orderby = 'id'
-
+    limit = int(request.args.get('limit')) if request.args.get('limit') else 1
+    limit = min(limit, 100)
+    offset = int(request.args.get('offset')) if request.args.get('offset') else 0
+    orderby = request.args.get('orderby') or 'id'
     if request.args.get('desc'):
         desc = fuzzyboolean(request.args.get('desc'))
     else:
@@ -220,32 +207,30 @@ def user_progress(project_id=None, short_name=None):
        him
 
     """
-    if project_id or short_name:
-        if short_name:
-            project = project_repo.get_by_shortname(short_name)
-        elif project_id:
-            project = project_repo.get(project_id)
-
-        if project:
-            # For now, keep this version, but wait until redis cache is
-            # used here for task_runs too
-            external_uid = request.args.get('external_uid')
-            query_attrs = dict(project_id=project.id)
-            if current_user.is_anonymous:
-                if external_uid is None:
-                    anon_ip = request.remote_addr or '127.0.0.1'
-                    query_attrs['user_ip'] = anonymizer.ip(anon_ip)
-                else:
-                    query_attrs['external_uid'] = external_uid
-            else:
-                query_attrs['user_id'] = current_user.id
-            taskrun_count = task_repo.count_task_runs_with(**query_attrs)
-            tmp = dict(done=taskrun_count, total=n_tasks(project.id))
-            return Response(json.dumps(tmp), mimetype="application/json")
-        else:
-            return abort(404)
-    else:  # pragma: no cover
+    if not project_id and not short_name:
         return abort(404)
+    if short_name:
+        project = project_repo.get_by_shortname(short_name)
+    else:
+        project = project_repo.get(project_id)
+
+    if not project:
+        return abort(404)
+    # For now, keep this version, but wait until redis cache is
+    # used here for task_runs too
+    external_uid = request.args.get('external_uid')
+    query_attrs = dict(project_id=project.id)
+    if current_user.is_anonymous:
+        if external_uid is None:
+            anon_ip = request.remote_addr or '127.0.0.1'
+            query_attrs['user_ip'] = anonymizer.ip(anon_ip)
+        else:
+            query_attrs['external_uid'] = external_uid
+    else:
+        query_attrs['user_id'] = current_user.id
+    taskrun_count = task_repo.count_task_runs_with(**query_attrs)
+    tmp = dict(done=taskrun_count, total=n_tasks(project.id))
+    return Response(json.dumps(tmp), mimetype="application/json")
 
 
 @jsonpify
@@ -256,17 +241,18 @@ def auth_jwt_project(short_name):
     project_secret_key = None
     if 'Authorization' in request.headers:
         project_secret_key = request.headers.get('Authorization')
-    if project_secret_key:
-        project = project_repo.get_by_shortname(short_name)
-        if project and project.secret_key == project_secret_key:
-            token = jwt.encode({'short_name': short_name,
-                                'project_id': project.id},
-                               project.secret_key, algorithm='HS256')
-            return token
-        else:
-            return abort(404)
-    else:
+    if not project_secret_key:
         return abort(403)
+    project = project_repo.get_by_shortname(short_name)
+    return (
+        jwt.encode(
+            {'short_name': short_name, 'project_id': project.id},
+            project.secret_key,
+            algorithm='HS256',
+        )
+        if project and project.secret_key == project_secret_key
+        else abort(404)
+    )
 
 
 @jsonpify
@@ -282,7 +268,7 @@ def get_disqus_sso_api():
             message, timestamp, sig, pub_key = get_disqus_sso_payload(None)
 
         if message and timestamp and sig and pub_key:
-            remote_auth_s3 = "%s %s %s" % (message, sig, timestamp)
+            remote_auth_s3 = f"{message} {sig} {timestamp}"
             tmp = dict(remote_auth_s3=remote_auth_s3, api_key=pub_key)
             return Response(json.dumps(tmp), mimetype='application/json')
         else:

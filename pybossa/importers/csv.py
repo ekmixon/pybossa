@@ -48,22 +48,15 @@ class BulkTaskCSVImport(BulkTaskImport):
     def _import_csv_tasks(self, csv_df):
         """Import CSV tasks."""
         headers = []
-        fields = set(['state', 'quorum', 'calibration', 'priority_0',
-                      'n_answers'])
-        field_header_index = []
-        row_number = 0
-
+        fields = {'state', 'quorum', 'calibration', 'priority_0', 'n_answers'}
         headers = list(csv_df.columns)
         self._check_no_duplicated_headers(headers)
         self._check_no_empty_headers(headers)
         field_headers = set(headers) & fields
-        for field in field_headers:
-            field_header_index.append(headers.index(field))
-
+        field_header_index = [headers.index(field) for field in field_headers]
         self._check_valid_row_length(csv_df)
 
         for index, row in csv_df.iterrows():
-            row_number += 1
             task_data = {"info": {}}
             for idx, cell in enumerate(list(row)):
                 if idx in field_header_index:
@@ -83,7 +76,7 @@ class BulkTaskCSVImport(BulkTaskImport):
         for h in stripped_headers:
             if "Unnamed" in h:
                 position = stripped_headers.index(h)
-                msg = "The file you uploaded has an empty header on column {}.".format(position+1)
+                msg = f"The file you uploaded has an empty header on column {position + 1}."
                 raise BulkImportException(msg)
 
     def _check_valid_row_length(self, df):
@@ -144,7 +137,7 @@ class BulkTaskLocalCSVImport(BulkTaskCSVImport):
         return self.form_data['csv_filename']
 
     def count_tasks(self):
-        return len([task for task in self.tasks()])
+        return len(list(self.tasks()))
 
     def _get_csv_data_from_request(self, csv_filename):
         if csv_filename is None:

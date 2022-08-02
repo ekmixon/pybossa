@@ -54,12 +54,12 @@ class Blogpost(db.Model, DomainObject):
     published = Column(Boolean, nullable=False, default=False)
 
     @classmethod
-    def public_attributes(self):
+    def public_attributes(cls):
         """Return a list of public attributes."""
         return ['created', 'updated', 'project_id', 'id', 'user_id',
                 'title', 'body', 'media_url', 'published']
 
     @classmethod
-    def public_info_keys(self):
+    def public_info_keys(cls):
         """Return a list of public info keys."""
         return []

@@ -19,7 +19,7 @@ field = 'allow_anonymous_contributors'
 
 def upgrade():
     op.add_column('app', sa.Column(field, sa.BOOLEAN, default=True))
-    query = 'UPDATE app SET %s = True;' % field
+    query = f'UPDATE app SET {field} = True;'
     op.execute(query)
 
 
